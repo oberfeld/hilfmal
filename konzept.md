@@ -1,4 +1,4 @@
-# Hilfmal – gemeinsam helfen im Gemeinschaftsraum
+# Hilfmal - der Pikettdienst für Jugendunruhen in Gemeinschafträumen.
 
 **Hilfmal** ist der freiwillige Hilfsdienst für die Gemeinschaftsräume der WBGO. Mithelfen können alle, die sich dafür engagieren möchten. Eltern dürften dabei eine besonders angesprochen sein, weil sie eine Aufsichtspflicht haben.
 
