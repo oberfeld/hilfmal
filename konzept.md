@@ -36,6 +36,22 @@ Die Lösung besteht aus einem Nextcloud-Kalender, einer Liste der Mitwirkenden i
 - Ein weiterer Hinweis informiert die Koordination über nicht besetzte Dienste.
 - Eine Liste in Nextcloud führt die Mitwirkenden und ihre Telefonnummern.
 
+## Lösungsentscheide
+
+### Liste der Mitwirkenden
+
+Bevorzugt wird eine Kontaktgruppe in Nextcloud Contacts. Die Kontakte enthalten Vorname, Telefonnummer und eine für die Zuordnung eindeutige E-Mail-Adresse. Die diensthabende Person wird einzeln als Teilnehmerin oder Teilnehmer zum jeweiligen Kalendereintrag eingeladen. Ein Script liest den Dienstplan über CalDAV und die Kontakte über CardDAV und ordnet die Person anhand der E-Mail-Adresse zu.
+
+Ob Einladungen und Antworten in der verwendeten Nextcloud wie gewünscht funktionieren, wird vor dem Pilotbetrieb getestet. Dabei ist auch festzulegen, wie mit ausstehenden oder abgelehnten Einladungen umgegangen wird. Bei fehlender oder mehrdeutiger Zuordnung darf keine falsche Telefonnummer veröffentlicht werden.
+
+Als Alternativen wurden Nextcloud Tables mit einer Personenkennung im Kalendereintrag sowie eine Tabellen- oder JSON-Datei verworfen. Sie ermöglichen ebenfalls das Auslesen per Script, erfordern aber eine separat gepflegte Zuordnung zum Kalendereintrag und nutzen die Kalender-Einladungsfunktion nicht direkt.
+
+### Service Account
+Ein eigener Nextcloud-Account ohne Adminrechte besitzt Kalender und Adressbuch.
+Die Koordination pflegt beides über ihren persönlichen Account und Freigaben.
+Das Script nutzt den Service Account mit einem eigenen App-Passwort.
+Es hat damit die Rechte des Eigentümers; das App-Passwort ist sicher aufzubewahren.
+
 ## Anleitung für Mitwirkende
 
 Eine Seite auf den «Grünen Seiten» erklärt den Ablauf für alle Mitwirkenden. Sie enthält:
