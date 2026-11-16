@@ -15,7 +15,9 @@ Die diensthabende Person ist Anlaufstelle für Jugendliche und Anwohnende: Sie v
 
 ## Dokumentation
 
-Das vollständige Konzept steht in [konzept.md](konzept.md).
+- [Konzept](konzept.md): Idee, Organisation und Ziele des Pilotbetriebs.
+- [Nutzerdokumentation](doc.md): Anleitung für Mitwirkende und Administration.
+- [Architektur](architektur.md): Anforderungen, technische Entscheide und geplanter Betrieb.
 
 ## Status
 
