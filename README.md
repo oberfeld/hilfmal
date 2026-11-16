@@ -21,7 +21,7 @@ Die diensthabende Person ist Anlaufstelle für Jugendliche und Anwohnende: Sie v
 
 ## Status
 
-Die PHP-Anwendung sowie schnelle und lokale Integrationstests sind vorhanden. Pipeline und Deployment sind noch nicht eingerichtet.
+Die PHP-Anwendung sowie schnelle und lokale Integrationstests sind vorhanden. Eine GitHub Action führt Build und Tests aus; das Deployment ist vorbereitet, aber deaktiviert.
 
 ## Lokale Entwicklung
 
@@ -33,6 +33,8 @@ composer test
 ```
 
 Für einen tatsächlichen Programmlauf `config.example.php` als Konfigurationsdatei ausserhalb des öffentlich erreichbaren Webverzeichnisses ablegen und die Werte anpassen. Das App-Passwort und die Notfall-E-Mail-Adresse müssen gesetzt sein. Die drei DAV-URLs bezeichnen den Kalender sowie die Adressbücher der Mitwirkenden und der Administration. Die Template-Pfade müssen auf die Dateien im Installationsverzeichnis zeigen; insbesondere sind sie beim Verschieben der Konfigurationsdatei anzupassen. Der Webserver muss die erzeugte `index.php` als PHP ausführen und der Programmlauf muss in das konfigurierte Webverzeichnis schreiben dürfen.
+
+Alle Konfigurationseinträge und die verwendbaren Template-Platzhalter sind direkt in [config.example.php](config.example.php) beschrieben. Beim Kopieren der Datei beachten: `__DIR__` bezeichnet das Verzeichnis der kopierten Konfigurationsdatei, nicht das ursprüngliche Projektverzeichnis.
 
 ```bash
 php bin/hilfmal.php /pfad/zur/konfiguration.php
@@ -55,3 +57,11 @@ Der Test startet eine eigene Nextcloud mit SQLite, ein TLS-Gateway, Mailpit und 
 Geprüft werden DAV-Zugriff, Vertretung und Lücke, Erinnerung und Administrationshinweis, die über HTTP ausgelieferte Webseite, eine Datenänderung vor und nach einem erneuten Lauf, der reguläre Programmeinstieg und das Verhalten bei fehlgeschlagenem Datenzugriff und Ablauf der Anzeige. Die Anwendung wird dabei für die deterministischen Prüfläufe mit einer festen Uhrzeit aufgerufen; der reguläre Programmeinstieg verwendet wie im Betrieb die Systemzeit.
 
 Das Skript verwendet einen eigenen Compose-Projektnamen und entfernt seine Container, das Netzwerk und die Testdaten auch bei einem Fehler. Es greift weder auf produktive Zugangsdaten noch auf eine bestehende Nextcloud oder Crontab zu. Die produzierten Docker-Images bleiben für spätere Läufe lokal erhalten.
+
+### GitHub Action und Deployment
+
+Die [GitHub Action](.github/workflows/build-test-deploy.yml) prüft bei Pull Requests und Pushes auf `main` die Composer-Konfiguration und PHP-Syntax, führt schnelle Tests und den Docker-Integrationstest aus und bereitet danach die Produktionsabhängigkeiten vor. Bei einem Fehler wird der Lauf gestoppt.
+
+Der SSH-Deployment-Schritt ist auskommentiert und führt keine Serveränderungen aus. Vor seiner Aktivierung müssen die Repository-Variablen `SSH_HOST`, `SSH_USER` und `DEPLOY_PATH` sowie die Actions-Secrets `SSH_PRIVATE_KEY`, `SSH_KNOWN_HOSTS` und `CONFIG_PHP` eingerichtet werden. `SSH_KNOWN_HOSTS` muss den unabhängig überprüften Hostschlüssel enthalten; `CONFIG_PHP` enthält die vollständige PHP-Konfiguration einschliesslich App-Passwort. Das Installationsverzeichnis muss ausserhalb des öffentlichen Webverzeichnisses liegen; die Pfade in der Konfiguration müssen auf die Serverumgebung abgestimmt sein.
+
+Der vorbereitete Schritt überträgt das Programm und seine Produktionsabhängigkeiten ohne fremde Dateien zu löschen und legt `config.php` geschützt im Installationsverzeichnis ab. **Er richtet noch keinen Cronjob ein**; die Zeitsteuerung und ihre Zeitzone müssen vor der Inbetriebnahme separat umgesetzt und geprüft werden.

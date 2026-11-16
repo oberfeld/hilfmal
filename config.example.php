@@ -2,20 +2,56 @@
 
 declare(strict_types=1);
 
+// Alle Einträge sind erforderlich. Diese Datei enthält nur Beispielwerte.
+// Die tatsächliche Konfiguration und das App-Passwort geschützt ausserhalb
+// des öffentlichen Webverzeichnisses aufbewahren und nicht ins Repository einchecken.
 return [
+    // Benutzername des Nextcloud-Service-Accounts für Kalender und Adressbücher.
     'dav_user' => 'hilfmal',
+
+    // App-Passwort des Service-Accounts für den DAV-Zugriff.
     'dav_password' => 'APP-PASSWORT',
+
+    // HTTPS-Adresse des Dienstplan-Kalenders (CalDAV).
     'calendar_url' => 'https://cloud.example.test/remote.php/dav/calendars/hilfmal/dienstplan/',
+
+    // HTTPS-Adresse des Adressbuchs mit den Kontakten der Mitwirkenden (CardDAV).
     'contacts_url' => 'https://cloud.example.test/remote.php/dav/addressbooks/users/hilfmal/mitwirkende/',
+
+    // HTTPS-Adresse des separaten Administrationsadressbuchs (CardDAV).
     'admins_url' => 'https://cloud.example.test/remote.php/dav/addressbooks/users/hilfmal/administration/',
+
+    // Absender- und Antwortadresse der vom Programm versendeten E-Mails.
     'sender' => 'hilfmal@oberfeld.be',
+
+    // Zusätzliche Empfängeradresse für Fehler, insbesondere wenn das
+    // Administrationsadressbuch nicht gelesen werden kann.
     'emergency_email' => 'admin@example.test',
+
+    // Vorlauf der Dienst-Erinnerung in ganzen Tagen; 0 bedeutet am Diensttag.
     'reminder_days' => 7,
+
+    // Zeitraum für die Suche nach Lücken ab dem aktuellen Diensttag als
+    // positives PHP-Datumsintervall (z. B. P1M für einen Monat).
+    // Die Endgrenze ist exklusiv; dies ist kein Mindestabstand zwischen Diensten.
     'gap_interval' => 'P1M',
+
+    // Pfad zur erzeugten PHP-Webseite; das Verzeichnis muss existieren und
+    // beschreibbar sein. Der Webserver muss die Datei als PHP ausführen.
     'public_page' => '/pfad/zum/webverzeichnis/index.php',
+
+    // Pfad zum HTML-Template mit den Platzhaltern {{name}} und {{phone}}.
     'web_template' => __DIR__ . '/templates/web.html',
+
+    // Pfad zum E-Mail-Template für Erinnerungen mit {{name}} und {{date}}.
     'reminder_template' => __DIR__ . '/templates/reminder.txt',
+
+    // Pfad zum E-Mail-Template für Hinweise an die Administration mit {{issues}}.
     'admin_template' => __DIR__ . '/templates/admin.txt',
+
+    // Betreff der Erinnerungs-E-Mail an Mitwirkende.
     'reminder_subject' => 'Erinnerung an deinen Hilfmal-Dienst',
+
+    // Betreff der E-Mail mit Lücken und anderen Dienstplanhinweisen.
     'admin_subject' => 'Hinweise zum Hilfmal-Dienstplan',
 ];

@@ -2,6 +2,18 @@
 
 declare(strict_types=1);
 
+/**
+ * Kommandozeilen-Einstiegspunkt für den täglichen Hilfmal-Lauf.
+ *
+ * Aufruf: php bin/hilfmal.php /pfad/zur/konfiguration.php
+ *
+ * Lädt und prüft die Konfiguration, verbindet Datenzugriff, E-Mail-Versand
+ * und Veröffentlichung und startet die Anwendung mit der aktuellen Systemzeit.
+ * Der Cronjob verwendet denselben Einstiegspunkt. Ein Exit-Code von 0 bedeutet
+ * Erfolg, 1 einen Fehler; Startfehler werden protokolliert und nach Möglichkeit
+ * an die konfigurierte Notfalladresse gemeldet.
+ */
+
 use Hilfmal\Application;
 use Hilfmal\CurlDavTransport;
 use Hilfmal\FilePublisher;

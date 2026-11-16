@@ -76,7 +76,7 @@ Vor Inbetriebnahme sind der lokale Mailversand, die Cron-Zeitzone und die Berech
 
 ## Testkonzept
 
-Die schnellen Tests werden mit PHPUnit umgesetzt. Für lokale Integrationstests steht eine Docker-Compose-Umgebung bereit; die Pipeline ist weiterhin geplant und noch nicht eingerichtet. Ziel ist, die fachlichen Regeln und möglichst viel des Betriebs lokal und in GitHub Actions reproduzierbar zu prüfen, ohne produktive Nextcloud-Daten, E-Mails oder Cyon-Zugänge zu verwenden.
+Die schnellen Tests werden mit PHPUnit umgesetzt. Für lokale Integrationstests steht eine Docker-Compose-Umgebung bereit. Eine GitHub Action führt Build und Tests aus; das SSH-Deployment ist auskommentiert und die Cronjob-Einrichtung noch nicht umgesetzt. Ziel ist, die fachlichen Regeln und möglichst viel des Betriebs lokal und in GitHub Actions reproduzierbar zu prüfen, ohne produktive Nextcloud-Daten, E-Mails oder Cyon-Zugänge zu verwenden.
 
 ### Testbare Struktur
 
