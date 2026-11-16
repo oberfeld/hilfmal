@@ -1,0 +1,7 @@
+Hallo,
+
+bei der Prüfung des Hilfmal-Dienstplans wurden folgende Hinweise festgestellt:
+
+{{issues}}
+
+Bitte prüfe den Dienstplan und die Kontaktdaten.

@@ -1,0 +1,6 @@
+Hallo {{name}},
+
+dein Hilfmal-Pikettdienst beginnt am {{date}} um 06:00 Uhr. Bitte organisiere bei Verhinderung eine Vertretung und informiere die Administration.
+
+Vielen Dank für deinen Einsatz!
+Dein Hilfmal-Team

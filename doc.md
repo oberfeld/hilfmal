@@ -1,6 +1,6 @@
 # Hilfmal: Anleitung für Mitwirkende und Administration
 
-Diese Anleitung beschreibt den vorgesehenen Ablauf. Das Programm und die automatischen Benachrichtigungen befinden sich noch in der Konzeptphase. Die Idee hinter Hilfmal steht im [Konzept](konzept.md), die technischen Anforderungen stehen in der [Architektur](architektur.md).
+Diese Anleitung beschreibt den vorgesehenen Ablauf. Das Programm ist noch nicht produktiv eingerichtet; automatische Benachrichtigungen sind noch nicht in Betrieb. Die Idee hinter Hilfmal steht im [Konzept](konzept.md), die technischen Anforderungen stehen in der [Architektur](architektur.md).
 
 ## Für Mitwirkende
 
@@ -8,7 +8,7 @@ Diese Anleitung beschreibt den vorgesehenen Ablauf. Das Programm und die automat
 
 Hilfmal unterstützt Jugendliche und Anwohnende bei Situationen in den Gemeinschaftsräumen. Die Mitwirkung ist freiwillig. Die Koordination verwaltet den Dienstplan und die Kontaktdaten.
 
-Ein Dienst dauert von 06:00 Uhr bis 06:00 Uhr am nächsten Tag. Die Webseite zeigt den Vornamen und die Telefonnummer der eingeteilten Person; sie wird einmal täglich um 06:00 Uhr aktualisiert. Änderungen am Dienstplan erscheinen erst nach dem nächsten erfolgreichen Lauf. Eine Erinnerung per E-Mail weist auf den bevorstehenden Dienst hin.
+Ein Dienst dauert von 06:00 Uhr bis 06:00 Uhr am nächsten Tag. Die Webseite zeigt den Vornamen und die Telefonnummer der eingeteilten Person; sie wird einmal täglich um 06:00 Uhr aktualisiert. Änderungen am Dienstplan erscheinen erst nach dem nächsten erfolgreichen Lauf. Eine Erinnerung per E-Mail weist standardmässig eine Woche im Voraus auf den bevorstehenden Dienst hin; dieser Vorlauf kann angepasst werden.
 
 Bei Verhinderung organisiert die eingeteilte Person eine Vertretung, zum Beispiel über eine WhatsApp- oder Nextcloud-Talk-Gruppe, und informiert die Administration, damit diese den Dienstplan anpasst. Da die Webseite nur einmal täglich aktualisiert wird, müssen kurzfristige Änderungen auch ausserhalb der Webseite kommuniziert werden.
 
@@ -45,13 +45,13 @@ Für den Zugriff des Programms wird zusätzlich ein eigenes App-Passwort erzeugt
 
 ### Administrationsadressen verwalten
 
-Pflege im separaten Adressbuch für die Administration die Kontakte mit den E-Mail-Adressen, an die Hinweise zu Lücken und unvollständigen Dienstplaneinträgen gesendet werden. Teile das Adressbuch mit den zuständigen Admin-Personen mit Schreibrecht und halte die Adressen aktuell.
+Pflege im separaten Adressbuch für die Administration die Kontakte mit den E-Mail-Adressen, an die Hinweise zu Lücken, unvollständigen Dienstplaneinträgen und Fehlern gesendet werden. Teile das Adressbuch mit den zuständigen Admin-Personen mit Schreibrecht und halte die Adressen aktuell. Lücken werden standardmässig einen Monat im Voraus geprüft; dieser Zeitraum kann angepasst werden.
 
 ### Dienstplan pflegen
 
 1. Erfasse jeden Dienst im Kalender des Accounts «Hilfmal» als ganztägigen Eintrag und füge genau eine Person aus dem Adressbuch «Mitwirkende» als eingeladene Person hinzu. Ihre E-Mail-Adresse muss mit derjenigen im Adressbuch übereinstimmen. Ob sie die Einladung annimmt oder ablehnt, wird nicht berücksichtigt.
 2. Stelle sicher, dass jeder Tag abgedeckt ist. Jeder eingetragene Tag gilt von 06:00 Uhr bis 06:00 Uhr des Folgetags. Mehrtägige ganztägige Einträge können mehrere Tage abdecken.
-3. Für eine Vertretung kann ein überlappender Eintrag erstellt werden. Der kürzere Eintrag hat Vorrang; bei gleicher Dauer der später erstellte. Prüfe, dass die Vertretung die nötigen Kontaktdaten hat.
+3. Für eine Vertretung kann ein überlappender Eintrag erstellt werden. Der kürzere Eintrag hat Vorrang; bei gleicher Dauer der später erstellte. Wenn das nicht zur Entscheidung genügt, entscheidet die alphanumerische Reihenfolge der Eintrags-UUID. Ist der bevorzugte Kontakt unvollständig, wird wenn möglich der nächste gültige Kontakt angezeigt und die Administration informiert. Prüfe, dass die Vertretung die nötigen Kontaktdaten hat.
 4. Beachte, dass die Webseite nur einmal täglich um 06:00 Uhr aktualisiert wird. Kurzfristige Änderungen müssen zusätzlich ausserhalb der Webseite kommuniziert werden.
 5. Prüfe die E-Mail-Hinweise zu Lücken und unvollständigen Einträgen und korrigiere den Dienstplan oder die Kontaktdaten.
 
