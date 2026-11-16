@@ -9,6 +9,10 @@ use DateTimeZone;
 
 final class Planner
 {
+    /**
+     * Gibt den Kalendertag des laufenden Dienstes zurück. Vor 06:00 Uhr
+     * Schweizer Zeit gehört der Dienst noch zum vorherigen Tag.
+     */
     public function serviceDate(DateTimeImmutable $now): string
     {
         $local = $now->setTimezone(new DateTimeZone('Europe/Zurich'));
@@ -18,7 +22,15 @@ final class Planner
         return $local->format('Y-m-d');
     }
 
-    /** @param list<Event> $events @param list<Contact> $contacts */
+    /**
+     * Wählt den gültigen Kontakt mit der höchsten Priorität für den Diensttag:
+     * zuerst kürzere Termine, dann später erstellte Termine und zuletzt die UID.
+     * Fehlt einer Dauergruppe ein Erstellungszeitpunkt, entscheidet dort die UID.
+     * Bei ungültigem Kontakt wird der nächste Kandidat geprüft.
+     *
+     * @param list<Event> $events
+     * @param list<Contact> $contacts
+     */
     public function select(string $date, array $events, array $contacts): ?Contact
     {
         $candidates = array_values(array_filter($events, static fn (Event $event): bool => $event->start <= $date && $date < $event->end));
@@ -66,7 +78,14 @@ final class Planner
         return $matches[0];
     }
 
-    /** @param list<Event> $events @param list<Contact> $contacts @return list<string> */
+    /**
+     * Meldet Einträge, deren eingeladene Person keinem vollständigen,
+     * eindeutigen Kontakt zugeordnet werden kann.
+     *
+     * @param list<Event> $events
+     * @param list<Contact> $contacts
+     * @return list<string>
+     */
     public function issues(array $events, array $contacts): array
     {
         $issues = [];
@@ -78,7 +97,13 @@ final class Planner
         return array_values(array_unique($issues));
     }
 
-    /** @param list<Event> $events @param list<Contact> $contacts @return list<string> */
+    /**
+     * Gibt Tage ohne gültigen Kontakt zurück; $start ist inklusive, $end exklusiv.
+     *
+     * @param list<Event> $events
+     * @param list<Contact> $contacts
+     * @return list<string>
+     */
     public function gaps(string $start, string $end, array $events, array $contacts): array
     {
         $result = [];
@@ -91,7 +116,13 @@ final class Planner
         return $result;
     }
 
-    /** @param list<Event> $events @param list<Contact> $contacts */
+    /**
+     * Gibt den Kontakt nur am ersten Tag eines zusammenhängenden Dienstes
+     * zurück, damit für diesen Dienst nicht täglich erinnert wird.
+     *
+     * @param list<Event> $events
+     * @param list<Contact> $contacts
+     */
     public function reminder(string $date, array $events, array $contacts): ?Contact
     {
         $current = $this->select($date, $events, $contacts);

@@ -16,13 +16,23 @@ final class CalendarParser
     /** @var list<string> */
     private array $issues = [];
 
-    /** @return list<string> */
+    /**
+     * Gibt Hinweise auf ungültige Einträge aus dem letzten parse()-Aufruf zurück.
+     *
+     * @return list<string>
+     */
     public function issues(): array
     {
         return $this->issues;
     }
 
-    /** @return list<Event> */
+    /**
+     * Liest iCalendar-Daten und löst wiederkehrende Termine im Zeitraum
+     * von $from inklusive bis $to exklusiv auf. Ungültige Einträge werden
+     * ausgelassen und über issues() gemeldet.
+     *
+     * @return list<Event>
+     */
     public function parse(string $ical, DateTimeImmutable $from, DateTimeImmutable $to): array
     {
         $this->issues = [];

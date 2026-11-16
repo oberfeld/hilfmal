@@ -12,8 +12,16 @@ interface DataSource
     public function admins(): array;
     /** @return list<Contact> */
     public function contacts(): array;
-    /** @return list<Event> */
+    /**
+     * Gibt Ereignisse im Zeitraum von $from inklusive bis $to exklusiv zurück.
+     *
+     * @return list<Event>
+     */
     public function events(DateTimeImmutable $from, DateTimeImmutable $to): array;
-    /** @return list<string> */
+    /**
+     * Gibt Hinweise auf ungültige Kalendereinträge aus dem letzten events()-Aufruf zurück.
+     *
+     * @return list<string>
+     */
     public function issues(): array;
 }

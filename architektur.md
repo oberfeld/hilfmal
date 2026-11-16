@@ -76,7 +76,7 @@ Vor Inbetriebnahme sind der lokale Mailversand, die Cron-Zeitzone und die Berech
 
 ## Testkonzept
 
-Die schnellen Tests werden mit PHPUnit umgesetzt. Integrationstestumgebung und Pipeline sind weiterhin geplant und noch nicht eingerichtet. Ziel ist, die fachlichen Regeln und möglichst viel des Betriebs lokal und in GitHub Actions reproduzierbar zu prüfen, ohne produktive Nextcloud-Daten, E-Mails oder Cyon-Zugänge zu verwenden.
+Die schnellen Tests werden mit PHPUnit umgesetzt. Für lokale Integrationstests steht eine Docker-Compose-Umgebung bereit; die Pipeline ist weiterhin geplant und noch nicht eingerichtet. Ziel ist, die fachlichen Regeln und möglichst viel des Betriebs lokal und in GitHub Actions reproduzierbar zu prüfen, ohne produktive Nextcloud-Daten, E-Mails oder Cyon-Zugänge zu verwenden.
 
 ### Testbare Struktur
 
@@ -97,13 +97,13 @@ Für die Umsetzung wird eine PHP-Testsuite, beispielsweise PHPUnit, mit versioni
 
 ### Lokaler Integrationstest
 
-Eine mit Docker Compose startbare, vom produktiven Betrieb getrennte Testumgebung soll die gleiche PHP-Version und die benötigten Erweiterungen wie die Zielumgebung verwenden. Sie umfasst:
+Eine mit Docker Compose startbare, vom produktiven Betrieb getrennte Testumgebung verwendet PHP 8.3 und die benötigten Erweiterungen. Sie umfasst:
 
-1. Eine isolierte Nextcloud-Testinstanz mit einem Testaccount, einem Kalender und zwei Adressbüchern. Ein reproduzierbarer Setup-Schritt richtet sie ein und lädt synthetische CalDAV-/CardDAV-Testdaten, einschliesslich eines ganztägigen mehrtägigen Eintrags, einer Vertretung und einer Lücke.
+1. Eine isolierte Nextcloud-Testinstanz mit einem Testaccount, einem Kalender und zwei Adressbüchern. Ein Setup-Schritt richtet sie ein und lädt synthetische CalDAV-/CardDAV-Testdaten, einschliesslich eines ganztägigen mehrtägigen Eintrags, einer Vertretung und einer Lücke.
 2. Einen PHP-Container, der das Programm mit einer separaten Testkonfiguration und einem temporären Ausgabeverzeichnis ausführt. Eine lokal bereitgestellte Webseite wird über HTTP geprüft; das öffentliche Verzeichnis darf weder Konfiguration noch Zugangsdaten enthalten.
-3. Einen lokalen Mailfänger. Da das Programm `mail()` verwendet, muss der Testcontainer dessen Sendmail-Schnittstelle ausdrücklich auf einen lokalen Transport zum Mailfänger umleiten; ein SMTP-Mailfänger allein fängt `mail()` nicht automatisch ab. Der Test überprüft die abgefangenen Nachrichten und ihre Empfänger. Eine Testkonfiguration, die E-Mails ins Internet senden könnte, ist nicht zulässig.
+3. Mailpit als lokalen Mailfänger. Der Testcontainer leitet die Sendmail-Schnittstelle von `mail()` mittels `msmtp` an Mailpit um. Der Test überprüft die abgefangenen Nachrichten und ihre Empfänger. Das interne Docker-Netz lässt keine E-Mails ins Internet zu.
 
-Der Test startet die Dienste, wartet auf deren tatsächliche Bereitschaft und führt den täglichen Programmlauf mit einer festen Testzeit aus. Er prüft die angezeigte Person, E-Mails für Erinnerung und Administration, die Gültigkeit der Webseite und den Exit-Status. Danach ändert er Kalender oder Kontakt und führt einen weiteren Lauf aus: Die Änderung darf erst dann sichtbar werden. Ein weiterer Fall simuliert einen fehlgeschlagenen Datenzugriff und prüft die Fehlermeldung sowie das Ablaufen der Anzeige. Die Testdaten und Container werden anschliessend wieder entfernt. Dienstversionen und Setup werden für reproduzierbare lokale und CI-Läufe festgelegt.
+Der Test startet die Dienste, wartet auf deren tatsächliche Bereitschaft und führt den täglichen Programmlauf mit einer festen Testzeit aus. Er prüft die angezeigte Person, E-Mails für Erinnerung und Administration, die Gültigkeit der Webseite und den Exit-Status. Danach ändert er einen Kontakt und führt einen weiteren Lauf aus: Die Änderung darf erst dann sichtbar werden. Der reguläre Programmeinstieg wird zusätzlich mit der Systemzeit aufgerufen. Ein weiterer Fall simuliert einen fehlgeschlagenen Datenzugriff und prüft die Fehlermeldung sowie das Ablaufen der Anzeige. Die Testdaten und Container werden anschliessend wieder entfernt. Der Aufruf und die Voraussetzungen stehen in der [README](README.md).
 
 ### Pipeline und Deployment
 

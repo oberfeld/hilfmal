@@ -11,6 +11,11 @@ use Throwable;
 
 final class Application
 {
+    /**
+     * $source, $mailer und $publisher kapseln Datenzugriff, Versand und
+     * Veröffentlichung. $emergency ist die Notfall-E-Mail-Adresse;
+     * $gapInterval ist ein PHP-Datumsintervall wie «P1M».
+     */
     public function __construct(
         private readonly DataSource $source,
         private readonly Mailer $mailer,
@@ -30,6 +35,11 @@ final class Application
         new DateInterval($gapInterval);
     }
 
+    /**
+     * Führt einen täglichen Lauf aus und gibt 0 bei Erfolg, sonst 1 zurück.
+     * Die Webseite wird erst nach erfolgreichem E-Mail-Versand veröffentlicht;
+     * Fehler werden protokolliert und nach Möglichkeit per E-Mail gemeldet.
+     */
     public function run(DateTimeImmutable $now): int
     {
         $admins = [];

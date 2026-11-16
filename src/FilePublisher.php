@@ -13,6 +13,11 @@ final readonly class FilePublisher implements Publisher
     {
     }
 
+    /**
+     * Erstellt eine PHP-Seite, die beim Abruf selbst prüft, ob die
+     * Dienstinformation noch gültig ist. Sie wird über eine temporäre Datei
+     * ersetzt, damit keine unvollständig geschriebene Seite ausgeliefert wird.
+     */
     public function publish(?Contact $contact, DateTimeImmutable $expires): void
     {
         $page = new WebPage();

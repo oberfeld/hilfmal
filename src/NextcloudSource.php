@@ -16,11 +16,24 @@ final class NextcloudSource implements DataSource
     /** @var list<string> */
     private array $issues = [];
 
-    public function __construct(private readonly DavTransport $transport, private readonly string $calendarUrl, private readonly string $contactsUrl, private readonly string $adminsUrl)
+    /**
+     * Der Transport führt die DAV-Anfragen an Nextcloud aus.
+     * Er kann für Tests durch eine andere Implementierung ersetzt werden.
+     */
+    public function __construct(
+        private readonly DavTransport $transport, 
+        private readonly string $calendarUrl, 
+        private readonly string $contactsUrl, 
+        private readonly string $adminsUrl)
     {
     }
 
-    /** @return list<string> */
+    /**
+     * Fragt Kalender- oder Adressbucheinträge per DAV ab und gibt deren
+     * iCalendar- beziehungsweise vCard-Daten aus der XML-Antwort zurück.
+     *
+     * @return list<string>
+     */
     private function query(string $url, bool $calendar): array
     {
         $body = $calendar
@@ -108,6 +121,10 @@ final class NextcloudSource implements DataSource
         return $events;
     }
 
+    /**
+     * Liefert Hinweise auf ungültige Kalendereinträge aus dem letzten events()-Aufruf.
+     * Der nächste events()-Aufruf ersetzt diese Hinweise.
+     */
     public function issues(): array
     {
         return $this->issues;

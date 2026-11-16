@@ -1,0 +1,40 @@
+services:
+  nextcloud:
+    image: nextcloud:30.0.14-apache
+    environment:
+      NEXTCLOUD_ADMIN_USER: hilfmal
+      NEXTCLOUD_ADMIN_PASSWORD: integration-test-only
+      SQLITE_DATABASE: hilfmal
+      NEXTCLOUD_TRUSTED_DOMAINS: nextcloud.test
+      OVERWRITEPROTOCOL: https
+    networks: [test]
+
+  tls:
+    build:
+      context: ../..
+      dockerfile: tests/integration/Dockerfile
+    command:
+      - socat
+      - OPENSSL-LISTEN:443,reuseaddr,fork,cert=/usr/local/share/ca-certificates/hilfmal-test.crt,key=/etc/ssl/private/hilfmal-test.key,verify=0
+      - TCP:nextcloud:80
+    networks:
+      test:
+        aliases: [nextcloud.test]
+
+  mailpit:
+    image: axllent/mailpit:v1.21.8
+    networks: [test]
+
+  runner:
+    build:
+      context: ../..
+      dockerfile: tests/integration/Dockerfile
+    command: ["php", "tests/integration/run.php"]
+    environment:
+      HILFMAL_INTEGRATION_TEST: "1"
+    depends_on: [nextcloud, tls, mailpit]
+    networks: [test]
+
+networks:
+  test:
+    internal: true
