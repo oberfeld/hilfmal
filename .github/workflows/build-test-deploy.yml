@@ -33,7 +33,7 @@ jobs:
       - name: PHP-Syntax prüfen
         run: |
           find src bin tests -name '*.php' -exec sh -c 'for file do php -l "$file" || exit 1; done' sh {} +
-          php -l config.example.php
+          php -r 'require "vendor/autoload.php"; \Symfony\Component\Yaml\Yaml::parseFile("config.example.yaml");'
 
       - name: Schnelle Tests ausführen
         run: composer test
@@ -55,14 +55,14 @@ jobs:
       #     DEPLOY_PATH: ${{ vars.DEPLOY_PATH }}
       #     SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
       #     SSH_KNOWN_HOSTS: ${{ secrets.SSH_KNOWN_HOSTS }}
-      #     CONFIG_PHP: ${{ secrets.CONFIG_PHP }}
+      #     CONFIG_YAML: ${{ secrets.CONFIG_YAML }}
       #   run: |
       #     set -eu
       #     [[ "$SSH_HOST" =~ ^[a-zA-Z0-9][a-zA-Z0-9.-]*$ ]] || { echo "Ungültiger SSH-Host" >&2; exit 1; }
       #     [[ "$SSH_USER" =~ ^[a-zA-Z_][a-zA-Z0-9_-]*$ ]] || { echo "Ungültiger SSH-Benutzer" >&2; exit 1; }
       #     case "$DEPLOY_PATH" in /*) ;; *) echo "DEPLOY_PATH muss absolut sein" >&2; exit 1 ;; esac
       #     case "$DEPLOY_PATH" in /|*[!a-zA-Z0-9_./-]*|*..*) echo "Ungültiger DEPLOY_PATH" >&2; exit 1 ;; esac
-      #     test -n "$SSH_PRIVATE_KEY" && test -n "$SSH_KNOWN_HOSTS" && test -n "$CONFIG_PHP"
+      #     test -n "$SSH_PRIVATE_KEY" && test -n "$SSH_KNOWN_HOSTS" && test -n "$CONFIG_YAML"
       #     mkdir -p "$HOME/.ssh"
       #     chmod 700 "$HOME/.ssh"
       #     printf '%s\n' "$SSH_PRIVATE_KEY" > "$HOME/.ssh/deploy_key"
@@ -71,5 +71,5 @@ jobs:
       #     ssh -i "$HOME/.ssh/deploy_key" -o StrictHostKeyChecking=yes "$SSH_USER@$SSH_HOST" "mkdir -p '$DEPLOY_PATH'"
       #     rsync -az -e "ssh -i $HOME/.ssh/deploy_key -o StrictHostKeyChecking=yes" \
       #       bin src templates vendor composer.json composer.lock "$SSH_USER@$SSH_HOST:$DEPLOY_PATH/"
-      #     printf '%s\n' "$CONFIG_PHP" | ssh -i "$HOME/.ssh/deploy_key" -o StrictHostKeyChecking=yes \
-      #       "$SSH_USER@$SSH_HOST" "set -eu; umask 077; tmp=\$(mktemp '$DEPLOY_PATH/.config.XXXXXX'); trap 'rm -f \"\$tmp\"' EXIT; cat > \"\$tmp\"; mv -f \"\$tmp\" '$DEPLOY_PATH/config.php'"
+      #     printf '%s\n' "$CONFIG_YAML" | ssh -i "$HOME/.ssh/deploy_key" -o StrictHostKeyChecking=yes \
+      #       "$SSH_USER@$SSH_HOST" "set -eu; umask 077; tmp=\$(mktemp '$DEPLOY_PATH/.config.XXXXXX'); trap 'rm -f \"\$tmp\"' EXIT; cat > \"\$tmp\"; mv -f \"\$tmp\" '$DEPLOY_PATH/config.yaml'"

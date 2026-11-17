@@ -72,6 +72,8 @@ Das App-Passwort für den Zugriff auf Adressbücher und Kalender wird als GitHub
 
 Da der Cronjob unabhängig von GitHub auf dem Server läuft, benötigt das Programm die Nextcloud-Zugangsdaten auch dort zur Laufzeit. Die Action stellt sie beim Deployment in einer geschützten Serverkonfiguration ausserhalb des öffentlichen Webverzeichnisses bereit. Nur der für das Programm benötigte Server-Account darf sie lesen. Zugangsdaten und personenbezogene Daten dürfen nicht in öffentlich ausgelieferten Dateien, Logs oder Fehlermeldungen erscheinen. Bei einem Passwortwechsel müssen die Secrets und die Serverkonfiguration aktualisiert und der Zugriff erneut geprüft werden.
 
+Die Konfiguration ist eine YAML-Datei und wird als Datenformat eingelesen, nicht als PHP ausgeführt. Ihr Pfad bleibt ein Kommandozeilenargument, damit Cronjob und Tests unterschiedliche geschützte Konfigurationsdateien verwenden können.
+
 Vor Inbetriebnahme sind der lokale Mailversand, die Cron-Zeitzone und die Berechtigung zur Einrichtung der Crontab auf dem gewählten Cyon-Angebot zu prüfen.
 
 ## Testkonzept

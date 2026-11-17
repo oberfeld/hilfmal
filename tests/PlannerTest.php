@@ -49,13 +49,31 @@ final class PlannerTest extends TestCase
         }
     }
 
-    public function testMissingOrAmbiguousContactNeverProducesNumber(): void
+    public function testMissingOrInvalidContactNeverProducesNumber(): void
     {
         $planner = new Planner();
         $event = $this->event('1', '2026-11-01', '2026-11-02', 'a@example.test');
         self::assertNull($planner->select('2026-11-01', [$event], []));
-        self::assertNull($planner->select('2026-11-01', [$event], [new Contact('A', '1', 'a@example.test'), new Contact('B', '2', 'a@example.test')]));
         self::assertNull($planner->select('2026-11-01', [$event], [new Contact('A', '', 'a@example.test')]));
+        self::assertSame('A', $planner->select('2026-11-01', [$event], [
+            new Contact('A', '1', 'a@example.test'),
+            new Contact('B', '2', 'a@example.test'),
+        ])?->name);
+    }
+
+    public function testSelectsFirstAttendeeWithAContact(): void
+    {
+        $event = new Event('1', '2026-11-01', '2026-11-02', [
+            'missing@example.test',
+            'b@example.test',
+            'a@example.test',
+        ]);
+        $contacts = [
+            new Contact('A', '111', 'a@example.test'),
+            new Contact('B', '222', 'b@example.test'),
+        ];
+
+        self::assertSame('B', (new Planner())->select('2026-11-01', [$event], $contacts)?->name);
     }
 
     public function testLaterCreationAndMissingCreationTiebreak(): void

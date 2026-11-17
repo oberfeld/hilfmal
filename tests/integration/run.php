@@ -6,6 +6,7 @@ use Hilfmal\FilePublisher;
 use Hilfmal\NextcloudSource;
 use Hilfmal\PhpMailer;
 use Hilfmal\Planner;
+use Symfony\Component\Yaml\Yaml;
 
 if (getenv('HILFMAL_INTEGRATION_TEST') !== '1') {
     throw new RuntimeException('Integrationstest darf nur in der isolierten Testumgebung gestartet werden.');
@@ -220,7 +221,7 @@ try {
             'reminder_subject' => 'Erinnerung',
             'admin_subject' => 'Dienstplan',
         ];
-        check(file_put_contents($config, '<?php return ' . var_export($settings, true) . ';') !== false, 'Testkonfiguration konnte nicht geschrieben werden.');
+        check(file_put_contents($config, Yaml::dump($settings)) !== false, 'Testkonfiguration konnte nicht geschrieben werden.');
         clearMessages();
         $process = proc_open(['php', '/app/bin/hilfmal.php', $config], [0 => ['pipe', 'r'], 1 => ['pipe', 'w'], 2 => ['pipe', 'w']], $cliPipes);
         check(is_resource($process), 'Programm konnte nicht gestartet werden.');

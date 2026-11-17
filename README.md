@@ -32,13 +32,15 @@ composer install
 composer test
 ```
 
-Für einen tatsächlichen Programmlauf `config.example.php` als Konfigurationsdatei ausserhalb des öffentlich erreichbaren Webverzeichnisses ablegen und die Werte anpassen. Das App-Passwort und die Notfall-E-Mail-Adresse müssen gesetzt sein. Die drei DAV-URLs bezeichnen den Kalender sowie die Adressbücher der Mitwirkenden und der Administration. Die Template-Pfade müssen auf die Dateien im Installationsverzeichnis zeigen; insbesondere sind sie beim Verschieben der Konfigurationsdatei anzupassen. Der Webserver muss die erzeugte `index.php` als PHP ausführen und der Programmlauf muss in das konfigurierte Webverzeichnis schreiben dürfen.
+Für einen tatsächlichen Programmlauf `config.example.yaml` als YAML-Konfigurationsdatei ausserhalb des öffentlich erreichbaren Webverzeichnisses ablegen und die Werte anpassen. Die Datei enthält Daten, keinen ausführbaren PHP-Code. Das App-Passwort und die Notfall-E-Mail-Adresse müssen gesetzt sein. Die drei DAV-URLs bezeichnen den Kalender sowie die Adressbücher der Mitwirkenden und der Administration. Die Template-Pfade müssen auf die Dateien im Installationsverzeichnis zeigen. Der Webserver muss die erzeugte `index.php` als PHP ausführen und der Programmlauf muss in das konfigurierte Webverzeichnis schreiben dürfen.
 
-Alle Konfigurationseinträge und die verwendbaren Template-Platzhalter sind direkt in [config.example.php](config.example.php) beschrieben. Beim Kopieren der Datei beachten: `__DIR__` bezeichnet das Verzeichnis der kopierten Konfigurationsdatei, nicht das ursprüngliche Projektverzeichnis.
+Alle Konfigurationseinträge und die verwendbaren Template-Platzhalter sind direkt in [config.example.yaml](config.example.yaml) beschrieben. Passe insbesondere die Datei- und Template-Pfade an deine Serverumgebung an.
 
 ```bash
-php bin/hilfmal.php /pfad/zur/konfiguration.php
+php bin/hilfmal.php /pfad/zur/konfiguration.yaml
 ```
+
+Der Konfigurationspfad bleibt als Kommandozeilenargument übergebbar. So kann der Cronjob eine geschützte Produktionskonfiguration verwenden und der Integrationstest eine temporäre Testkonfiguration.
 
 Der Lauf verwendet die tatsächliche Systemzeit und liest die Daten über HTTPS. Er versendet echte E-Mails und veröffentlicht die Webseite: Für Entwicklung und Tests deshalb ausschliesslich isolierte Testkonten, Testempfänger und ein separates Ausgabeverzeichnis verwenden. Die Tests selbst kontaktieren keine externen Dienste.
 
@@ -62,6 +64,6 @@ Das Skript verwendet einen eigenen Compose-Projektnamen und entfernt seine Conta
 
 Die [GitHub Action](.github/workflows/build-test-deploy.yml) prüft bei Pull Requests und Pushes auf `main` die Composer-Konfiguration und PHP-Syntax, führt schnelle Tests und den Docker-Integrationstest aus und bereitet danach die Produktionsabhängigkeiten vor. Bei einem Fehler wird der Lauf gestoppt.
 
-Der SSH-Deployment-Schritt ist auskommentiert und führt keine Serveränderungen aus. Vor seiner Aktivierung müssen die Repository-Variablen `SSH_HOST`, `SSH_USER` und `DEPLOY_PATH` sowie die Actions-Secrets `SSH_PRIVATE_KEY`, `SSH_KNOWN_HOSTS` und `CONFIG_PHP` eingerichtet werden. `SSH_KNOWN_HOSTS` muss den unabhängig überprüften Hostschlüssel enthalten; `CONFIG_PHP` enthält die vollständige PHP-Konfiguration einschliesslich App-Passwort. Das Installationsverzeichnis muss ausserhalb des öffentlichen Webverzeichnisses liegen; die Pfade in der Konfiguration müssen auf die Serverumgebung abgestimmt sein.
+Der SSH-Deployment-Schritt ist auskommentiert und führt keine Serveränderungen aus. Vor seiner Aktivierung müssen die Repository-Variablen `SSH_HOST`, `SSH_USER` und `DEPLOY_PATH` sowie die Actions-Secrets `SSH_PRIVATE_KEY`, `SSH_KNOWN_HOSTS` und `CONFIG_YAML` eingerichtet werden. `SSH_KNOWN_HOSTS` muss den unabhängig überprüften Hostschlüssel enthalten; `CONFIG_YAML` enthält die vollständige YAML-Konfiguration einschliesslich App-Passwort. Das Installationsverzeichnis muss ausserhalb des öffentlichen Webverzeichnisses liegen; die Pfade in der Konfiguration müssen auf die Serverumgebung abgestimmt sein.
 
-Der vorbereitete Schritt überträgt das Programm und seine Produktionsabhängigkeiten ohne fremde Dateien zu löschen und legt `config.php` geschützt im Installationsverzeichnis ab. **Er richtet noch keinen Cronjob ein**; die Zeitsteuerung und ihre Zeitzone müssen vor der Inbetriebnahme separat umgesetzt und geprüft werden.
+Der vorbereitete Schritt überträgt das Programm und seine Produktionsabhängigkeiten ohne fremde Dateien zu löschen und legt `config.yaml` geschützt im Installationsverzeichnis ab. **Er richtet noch keinen Cronjob ein**; die Zeitsteuerung und ihre Zeitzone müssen vor der Inbetriebnahme separat umgesetzt und geprüft werden.

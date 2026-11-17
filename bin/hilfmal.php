@@ -5,7 +5,7 @@ declare(strict_types=1);
 /**
  * Kommandozeilen-Einstiegspunkt für den täglichen Hilfmal-Lauf.
  *
- * Aufruf: php bin/hilfmal.php /pfad/zur/konfiguration.php
+ * Aufruf: php bin/hilfmal.php /pfad/zur/konfiguration.yaml
  *
  * Lädt und prüft die Konfiguration, verbindet Datenzugriff, E-Mail-Versand
  * und Veröffentlichung und startet die Anwendung mit der aktuellen Systemzeit.
@@ -19,17 +19,18 @@ use Hilfmal\CurlDavTransport;
 use Hilfmal\FilePublisher;
 use Hilfmal\NextcloudSource;
 use Hilfmal\PhpMailer;
+use Symfony\Component\Yaml\Yaml;
 
 require __DIR__ . '/../vendor/autoload.php';
 
 $config = null;
 try {
     if ($argc !== 2 || !is_file($argv[1])) {
-        throw new RuntimeException('Aufruf: php bin/hilfmal.php /pfad/zur/konfiguration.php');
+        throw new RuntimeException('Aufruf: php bin/hilfmal.php /pfad/zur/konfiguration.yaml');
     }
-    $config = require $argv[1];
+    $config = Yaml::parseFile($argv[1]);
     if (!is_array($config)) {
-        throw new RuntimeException('Die Konfiguration muss ein Array zurückgeben.');
+        throw new RuntimeException('Die Konfiguration muss eine YAML-Zuordnung enthalten.');
     }
     $strings = ['dav_user', 'dav_password', 'calendar_url', 'contacts_url', 'admins_url', 'sender', 'emergency_email', 'gap_interval', 'public_page', 'web_template', 'reminder_template', 'admin_template', 'reminder_subject', 'admin_subject'];
     foreach ($strings as $key) {

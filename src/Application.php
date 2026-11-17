@@ -14,7 +14,7 @@ final class Application
     /**
      * $source, $mailer und $publisher kapseln Datenzugriff, Versand und
      * Veröffentlichung. $emergency ist die Notfall-E-Mail-Adresse;
-     * $gapInterval ist ein PHP-Datumsintervall wie «P1M».
+     * $gapInterval bestimmt den Zeitraum der Lückenprüfung (z. B. «P1M»).
      */
     public function __construct(
         private readonly DataSource $source,
@@ -45,53 +45,122 @@ final class Application
         $admins = [];
         $stage = 'Administrationsadressen lesen';
         try {
-            $admins = $this->source->admins();
-            if ($admins === [] || array_filter($admins, static fn (string $email): bool => !filter_var($email, FILTER_VALIDATE_EMAIL))) {
-                throw new \RuntimeException('Administrationsadressbuch enthält keine gültigen Empfänger.');
-            }
+            $admins = $this->loadAdmins();
             $planner = new Planner();
-            $today = new DateTimeImmutable($planner->serviceDate($now), new DateTimeZone('Europe/Zurich'));
-            $target = $today->modify("+{$this->reminderDays} days");
-            $gapEnd = $today->add(new DateInterval($this->gapInterval));
-            if ($gapEnd <= $today) {
-                throw new \RuntimeException('Der Prüfzeitraum muss grösser als null sein.');
-            }
-            $end = max($gapEnd, $target->modify('+1 day'));
+            [$today, $target, $gapEnd] = $this->calculateDateRange($now, $planner);
+
             $stage = 'Kalender lesen';
-            $events = $this->source->events($today->modify('-1 day'), $end);
+            $events = $this->loadEvents($today, $target, $gapEnd);
+
             $stage = 'Mitwirkende lesen';
             $contacts = $this->source->contacts();
             $current = $planner->select($today->format('Y-m-d'), $events, $contacts);
             $expires = $today->modify('+1 day')->setTime(6, 0);
             $reminder = $planner->reminder($target->format('Y-m-d'), $events, $contacts);
+
             if ($reminder !== null) {
                 $stage = 'Erinnerung versenden';
-                $this->mailer->send($reminder->email, $this->sender, $this->reminderSubject, strtr($this->reminderTemplate, ['{{name}}' => $reminder->name, '{{date}}' => $target->format('Y-m-d')]));
+                $this->sendReminder($reminder, $target);
             }
-            $gaps = $planner->gaps($today->format('Y-m-d'), $gapEnd->format('Y-m-d'), $events, $contacts);
-            $issues = [...$this->source->issues(), ...$planner->issues($events, $contacts)];
-            foreach ($gaps as $gap) {
-                $issues[] = "Kein gültiger Dienst: $gap";
-            }
+
+            $issues = $this->collectIssues($today, $gapEnd, $planner, $events, $contacts);
             if ($issues !== []) {
-                foreach (array_unique($admins) as $admin) {
-                    $stage = 'Administrationshinweis versenden';
-                    $this->mailer->send($admin, $this->sender, $this->adminSubject, strtr($this->adminTemplate, ['{{issues}}' => implode("\n", $issues)]));
-                }
+                $stage = 'Administrationshinweis versenden';
+                $this->sendAdminNotices($admins, $issues);
             }
+
             $stage = 'Webseite veröffentlichen';
             $this->publisher->publish($current, $expires);
             return 0;
         } catch (Throwable $error) {
-            error_log('Hilfmal: Programmlauf fehlgeschlagen beim Schritt "' . $stage . '": ' . get_class($error));
-            foreach (array_unique($admins !== [] ? [...$admins, $this->emergency] : [$this->emergency]) as $admin) {
-                try {
-                    $this->mailer->send($admin, $this->sender, 'Fehler beim Hilfmal-Programmlauf', 'Der Hilfmal-Programmlauf ist fehlgeschlagen. Bitte das Serverprotokoll und die Konfiguration prüfen.');
-                } catch (Throwable $mailError) {
-                    error_log('Hilfmal: Versand der Fehlermeldung fehlgeschlagen: ' . get_class($mailError));
-                }
-            }
+            $this->reportFailure($error, $stage, $admins);
             return 1;
+        }
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function loadAdmins(): array
+    {
+        $admins = $this->source->admins();
+        if ($admins === [] || array_filter($admins, static fn (string $email): bool => !filter_var($email, FILTER_VALIDATE_EMAIL))) {
+            throw new \RuntimeException('Administrationsadressbuch enthält keine gültigen Empfänger.');
+        }
+        return $admins;
+    }
+
+    /**
+     * @return array{DateTimeImmutable, DateTimeImmutable, DateTimeImmutable}
+     */
+    private function calculateDateRange(DateTimeImmutable $now, Planner $planner): array
+    {
+        $today = new DateTimeImmutable($planner->serviceDate($now), new DateTimeZone('Europe/Zurich'));
+        $target = $today->modify("+{$this->reminderDays} days");
+        $gapEnd = $today->add(new DateInterval($this->gapInterval));
+        if ($gapEnd <= $today) {
+            throw new \RuntimeException('Der Prüfzeitraum muss grösser als null sein.');
+        }
+        return [$today, $target, $gapEnd];
+    }
+
+    /**
+     * @return list<Event>
+     */
+    private function loadEvents(DateTimeImmutable $today, DateTimeImmutable $target, DateTimeImmutable $gapEnd): array
+    {
+        $end = max($gapEnd, $target->modify('+1 day'));
+        return $this->source->events($today->modify('-1 day'), $end);
+    }
+
+    private function sendReminder(Contact $contact, DateTimeImmutable $target): void
+    {
+        $body = strtr($this->reminderTemplate, [
+            '{{name}}' => $contact->name,
+            '{{date}}' => $target->format('Y-m-d'),
+        ]);
+        $this->mailer->send($contact->email, $this->sender, $this->reminderSubject, $body);
+    }
+
+    /**
+     * @param list<Event> $events
+     * @param list<Contact> $contacts
+     * @return list<string>
+     */
+    private function collectIssues(DateTimeImmutable $today, DateTimeImmutable $gapEnd, Planner $planner, array $events, array $contacts): array
+    {
+        $issues = [...$this->source->issues(), ...$planner->issues($events, $contacts)];
+        foreach ($planner->gaps($today->format('Y-m-d'), $gapEnd->format('Y-m-d'), $events, $contacts) as $gap) {
+            $issues[] = "Kein gültiger Dienst: $gap";
+        }
+        return $issues;
+    }
+
+    /**
+     * @param list<string> $admins
+     * @param list<string> $issues
+     */
+    private function sendAdminNotices(array $admins, array $issues): void
+    {
+        $body = strtr($this->adminTemplate, ['{{issues}}' => implode("\n", $issues)]);
+        foreach (array_unique($admins) as $admin) {
+            $this->mailer->send($admin, $this->sender, $this->adminSubject, $body);
+        }
+    }
+
+    /**
+     * @param list<string> $admins
+     */
+    private function reportFailure(Throwable $error, string $stage, array $admins): void
+    {
+        error_log('Hilfmal: Programmlauf fehlgeschlagen beim Schritt "' . $stage . '": ' . get_class($error));
+        $recipients = $admins !== [] ? [...$admins, $this->emergency] : [$this->emergency];
+        foreach (array_unique($recipients) as $admin) {
+            try {
+                $this->mailer->send($admin, $this->sender, 'Fehler beim Hilfmal-Programmlauf', 'Der Hilfmal-Programmlauf ist fehlgeschlagen. Bitte das Serverprotokoll und die Konfiguration prüfen.');
+            } catch (Throwable $mailError) {
+                error_log('Hilfmal: Versand der Fehlermeldung fehlgeschlagen: ' . get_class($mailError));
+            }
         }
     }
 }

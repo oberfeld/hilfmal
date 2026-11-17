@@ -7,6 +7,10 @@ namespace Hilfmal;
 use DateTimeImmutable;
 use DateTimeZone;
 
+/**
+ * Wertet Kalendertermine und Kontakte aus, um Dienstzuständigkeit,
+ * Erinnerungen, Lücken und Planhinweise zu bestimmen.
+ */
 final class Planner
 {
     /**
@@ -26,7 +30,7 @@ final class Planner
      * Wählt den gültigen Kontakt mit der höchsten Priorität für den Diensttag:
      * zuerst kürzere Termine, dann später erstellte Termine und zuletzt die UID.
      * Fehlt einer Dauergruppe ein Erstellungszeitpunkt, entscheidet dort die UID.
-     * Bei ungültigem Kontakt wird der nächste Kandidat geprüft.
+     * Pro Termin wird der erste Attendee mit gültigem Kontakt gewählt.
      *
      * @param list<Event> $events
      * @param list<Contact> $contacts
@@ -68,14 +72,15 @@ final class Planner
     /** @param list<Contact> $contacts */
     private function resolve(Event $event, array $contacts): ?Contact
     {
-        if (count($event->attendees) !== 1) {
-            return null;
+        foreach ($event->attendees as $attendee) {
+            foreach ($contacts as $contact) {
+                if (strcasecmp($contact->email, $attendee) !== 0 || trim($contact->name) === '' || trim($contact->phone) === '' || !filter_var($contact->email, FILTER_VALIDATE_EMAIL)) {
+                    continue;
+                }
+                return $contact;
+            }
         }
-        $matches = array_values(array_filter($contacts, static fn (Contact $contact): bool => strcasecmp($contact->email, $event->attendees[0]) === 0));
-        if (count($matches) !== 1 || trim($matches[0]->name) === '' || trim($matches[0]->phone) === '' || !filter_var($matches[0]->email, FILTER_VALIDATE_EMAIL)) {
-            return null;
-        }
-        return $matches[0];
+        return null;
     }
 
     /**
