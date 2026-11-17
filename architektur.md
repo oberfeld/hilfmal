@@ -2,7 +2,7 @@
 
 ## Überblick
 
-In diesem Repository wird das PHP-Programm für die zentrale Logik von Hilfmal entwickelt. Der Dienstplan und das Adressbuch bleiben in Nextcloud; das Programm läuft auf dem Cyon-Server. Eine GitHub Action installiert das Programm bei jedem Push auf den Branch `main` und richtet dessen täglichen Aufruf ein.
+Das Go-Programm enthält die zentrale Logik von Hilfmal. Der Dienstplan und das Adressbuch bleiben in Nextcloud; das Programm soll auf dem Cyon-Server laufen. Die GitHub Action führt die Go-Prüfungen und die isolierten Docker-Integrationstests aus; Deployment und Cronjob-Einrichtung sind noch nicht umgesetzt.
 
 Die fachlichen Grundlagen stehen im [Konzept](konzept.md); die Bedienung für Mitwirkende und Administration ist in der [Nutzerdokumentation](doc.md) beschrieben. Die nachfolgenden Anforderungen beschreiben die geplante Umsetzung.
 
@@ -32,7 +32,7 @@ Als Alternativen wurden Nextcloud Tables mit einer Personenkennung im Kalenderei
 - Pro Dienstzeitraum wird wenn möglich genau ein Kontakt ausgewählt und auf der Webseite angezeigt. Ist der Kontakt des vorrangigen Eintrags nicht eindeutig oder unvollständig, wird der nächste gültige Eintrag verwendet und die Administration informiert. Gibt es keinen gültigen Eintrag, wird keine Telefonnummer veröffentlicht.
 - Wiederkehrende ganztägige Einträge und deren Ausnahmen werden berücksichtigt.
 
-## Aufgaben des PHP-Programms
+## Aufgaben des Go-Programms
 
 Der tägliche Programmlauf liest und prüft den Dienstplan und die Adressbücher. Benachrichtigungen werden ausschliesslich per E-Mail verschickt. Er übernimmt folgende Aufgaben:
 
@@ -45,71 +45,71 @@ Für E-Mails und Webseite stehen einfach anzupassende Templates bereit. Diese tr
 
 ### E-Mail-Versand
 
-Wie Putzmal verwendet Hilfmal die PHP-Funktion `mail()` und den auf dem Cyon-Server eingerichteten Mailversand, ohne eigene SMTP-Zugangsdaten im Programm. Die konfigurierte Absenderadresse wird für `From` und `Reply-To` verwendet. Texte werden als UTF-8 versendet; Betreff und Header müssen für den Mailversand korrekt kodiert werden.
+Hilfmal übergibt E-Mails an den lokalen sendmail-kompatiblen Mailversand des Servers, ohne eigene SMTP-Zugangsdaten im Programm. Die konfigurierte Absenderadresse wird für `From` und `Reply-To` verwendet. Texte werden als UTF-8 versendet; Betreff und Header müssen für den Mailversand korrekt kodiert werden.
 
-Der Rückgabewert von `mail()` wird geprüft. Ein Fehler beim Versand wird protokolliert und der Programmlauf als fehlgeschlagen ausgewiesen. Anders als bei Putzmal darf ein fehlgeschlagener Einzelversand nicht zu einem erfolgreichen Lauf führen. Ein erfolgreicher Rückgabewert bestätigt nur die Annahme durch den lokalen Mailversand, nicht die Zustellung an die Empfänger.
+Der Rückgabewert des lokalen Mailversands wird geprüft. Ein Fehler beim Versand wird protokolliert und der Programmlauf als fehlgeschlagen ausgewiesen. Anders als bei Putzmal darf ein fehlgeschlagener Einzelversand nicht zu einem erfolgreichen Lauf führen. Ein erfolgreicher Rückgabewert bestätigt nur die Annahme durch den lokalen Mailversand, nicht die Zustellung an die Empfänger.
 
 Der tägliche Lauf liest die Daten jeweils neu und aktualisiert die Webseite um 06:00 Uhr. Es wird kein Cache der eingelesenen Kalender- oder Adressbuchdaten gepflegt. Das veröffentlichte Ergebnis gilt bis zum nächsten vorgesehenen Cronjob. Zwischen zwei Läufen werden Änderungen in Nextcloud nicht automatisch übernommen; sie erscheinen erst nach dem nächsten erfolgreichen Lauf.
 
-Wenn keine Person eindeutig zugeordnet werden kann oder die Gültigkeit des veröffentlichten Ergebnisses abgelaufen ist, darf keine möglicherweise falsche Telefonnummer angezeigt werden. Stattdessen zeigt die Webseite an, dass keine verlässliche Dienstinformation verfügbar ist. Dies gilt auch, wenn der nächste Lauf ausbleibt oder fehlschlägt. Die technische Umsetzung muss die Gültigkeit deshalb auch ohne erfolgreichen Cronjob beim Abruf durchsetzen. Fehler beim Abrufen, Verarbeiten oder Veröffentlichen werden protokolliert und der Administration per E-Mail gemeldet; sie dürfen nicht als erfolgreicher Lauf erscheinen. Falls der E-Mail-Versand selbst fehlschlägt, wird auch dieser Fehler protokolliert und der Lauf als fehlgeschlagen ausgewiesen. Die Aufbewahrung der Daten und Protokolle ist auf das für den Betrieb Nötige zu begrenzen.
+Wenn keine Person eindeutig zugeordnet werden kann, zeigt die Webseite an, dass keine verlässliche Dienstinformation verfügbar ist. Die Webseite wird als statische HTML-Datei veröffentlicht. Wird ein Lauf verpasst oder schlägt er fehl, bleibt der zuletzt veröffentlichte Inhalt einschliesslich Telefonnummer sichtbar, bis ein neuer Lauf erfolgreich veröffentlicht. Diese bewusst akzeptierte Einschränkung bedeutet, dass die Veröffentlichung keine serverseitige Ablaufprüfung bietet. Fehler beim Abrufen, Verarbeiten, Versenden oder Veröffentlichen werden protokolliert und der Administration per E-Mail gemeldet; sie dürfen nicht als erfolgreicher Lauf erscheinen. Die Aufbewahrung der Daten und Protokolle ist auf das für den Betrieb Nötige zu begrenzen.
 
 Für den Fall, dass das Administrationsadressbuch nicht gelesen werden kann, ist zusätzlich eine Notfall-E-Mail-Adresse konfigurierbar. Fehler beim Programmstart können nur per E-Mail gemeldet werden, wenn Konfiguration, Absender und Notfalladresse bereits verfügbar sind; andernfalls bleiben Protokoll und fehlgeschlagener Exit-Status.
 
 ## Installation und Zeitsteuerung
 
-- Ein Push auf `main` startet die GitHub Action. Sie installiert die aktuelle Version des Programms auf dem Cyon-Server.
-- Dieselbe Action richtet auf dem Cyon-Server einen Cronjob ein, der das Programm täglich um **06:00 Uhr Schweizer Zeit** (`Europe/Zurich`, einschliesslich Sommer- und Winterzeit) ausführt. Die Zeitzone muss bei der Einrichtung und im Betrieb ausdrücklich berücksichtigt werden.
+- Ein Push auf `main` startet die GitHub Action und prüft das Go-Programm. Ein Deployment auf den Cyon-Server und die Cronjob-Einrichtung sind noch nicht implementiert.
+- Das geplante Deployment installiert das Go-Binary und richtet einen Cronjob ein, der es täglich um **06:00 Uhr Schweizer Zeit** (`Europe/Zurich`, einschliesslich Sommer- und Winterzeit) ausführt. Die Zeitzone muss bei der Einrichtung und im Betrieb ausdrücklich berücksichtigt werden.
 - Die Einrichtung ist wiederholbar: Ein erneutes Deployment aktualisiert den zu Hilfmal gehörenden Cronjob, ohne doppelte Einträge anzulegen oder andere Cronjobs zu verändern.
 - Ein fehlgeschlagenes Deployment oder eine fehlgeschlagene Cronjob-Einrichtung lässt die Action fehlschlagen. Auch der regelmässige Programmlauf muss auf Fehler überwacht werden; ein erfolgreiches Deployment allein bestätigt nicht, dass die täglichen Läufe funktionieren.
-- Als Vorlage dient der Deployment-Workflow aus dem benachbarten Projekt Putzmal (`.github/workflows/php.yml`): GitHub Actions richtet PHP ein, installiert Composer-Abhängigkeiten und überträgt das Programm per SSH und `rsync` auf den Server. Anschliessend wird der Cronjob per SSH eingerichtet. Die Übertragung ist für Hilfmal so anzupassen, dass Konfiguration und andere Daten nicht unbeabsichtigt gelöscht werden und der SSH-Hostschlüssel geprüft wird.
+- GitHub Actions baut und testet das Go-Programm. Ein künftiger Deployment-Schritt muss das Go-Binary per SSH auf den Server übertragen und den Cronjob einrichten. Die Übertragung muss Konfiguration und andere Daten erhalten und den SSH-Hostschlüssel prüfen.
 - Serverpfade, insbesondere für Installation, geschützte Konfiguration und veröffentlichte Webseite, müssen einfach konfigurierbar sein; Deployment und Cronjob verwenden die entsprechend konfigurierten Pfade.
 
-Wie bei Putzmal liest die Action die bestehende Crontab über SSH, aktualisiert den Hilfmal-Eintrag und installiert die angepasste Crontab mit `crontab`. Der Eintrag wechselt in das konfigurierte Installationsverzeichnis und startet das PHP-Programm über die Kommandozeile. Für Hilfmal wird der Zeitplan auf täglich 06:00 Uhr Schweizer Zeit gesetzt; vor Inbetriebnahme ist sicherzustellen, dass die Zeitzone des Cron-Dienstes dies auch bei Sommer- und Winterzeit gewährleistet. Anders als beim Putzmal-Beispiel darf ein Fehler beim Lesen einer bestehenden Crontab nicht dazu führen, dass fremde Einträge überschrieben werden.
+Der geplante Cronjob startet das Go-Binary täglich um 06:00 Uhr Schweizer Zeit. Vor Inbetriebnahme ist sicherzustellen, dass die Zeitzone des Cron-Dienstes dies auch bei Sommer- und Winterzeit gewährleistet. Ein Fehler beim Lesen einer bestehenden Crontab darf nicht dazu führen, dass fremde Einträge überschrieben werden.
 
 ## Zugangsdaten und Sicherheit
 
-Das App-Passwort für den Zugriff auf Adressbücher und Kalender wird als GitHub-Actions-Secret hinterlegt und weder im Repository noch in Workflow-Ausgaben veröffentlicht. Auch die für die Installation auf Cyon benötigten Zugangsdaten sind getrennt und geschützt zu verwalten.
+Für ein künftiges Deployment müssen das App-Passwort für den Zugriff auf Adressbücher und Kalender sowie die Serverzugangsdaten geschützt verwaltet werden. Sie dürfen weder im Repository noch in Workflow-Ausgaben veröffentlicht werden.
 
 Da der Cronjob unabhängig von GitHub auf dem Server läuft, benötigt das Programm die Nextcloud-Zugangsdaten auch dort zur Laufzeit. Die Action stellt sie beim Deployment in einer geschützten Serverkonfiguration ausserhalb des öffentlichen Webverzeichnisses bereit. Nur der für das Programm benötigte Server-Account darf sie lesen. Zugangsdaten und personenbezogene Daten dürfen nicht in öffentlich ausgelieferten Dateien, Logs oder Fehlermeldungen erscheinen. Bei einem Passwortwechsel müssen die Secrets und die Serverkonfiguration aktualisiert und der Zugriff erneut geprüft werden.
 
-Die Konfiguration ist eine YAML-Datei und wird als Datenformat eingelesen, nicht als PHP ausgeführt. Ihr Pfad bleibt ein Kommandozeilenargument, damit Cronjob und Tests unterschiedliche geschützte Konfigurationsdateien verwenden können.
+Die Konfiguration ist eine YAML-Datei und wird als Datenformat eingelesen. Ihr Pfad bleibt ein Kommandozeilenargument, damit Cronjob und Tests unterschiedliche geschützte Konfigurationsdateien verwenden können.
 
 Vor Inbetriebnahme sind der lokale Mailversand, die Cron-Zeitzone und die Berechtigung zur Einrichtung der Crontab auf dem gewählten Cyon-Angebot zu prüfen.
 
 ## Testkonzept
 
-Die schnellen Tests werden mit PHPUnit umgesetzt. Für lokale Integrationstests steht eine Docker-Compose-Umgebung bereit. Eine GitHub Action führt Build und Tests aus; das SSH-Deployment ist auskommentiert und die Cronjob-Einrichtung noch nicht umgesetzt. Ziel ist, die fachlichen Regeln und möglichst viel des Betriebs lokal und in GitHub Actions reproduzierbar zu prüfen, ohne produktive Nextcloud-Daten, E-Mails oder Cyon-Zugänge zu verwenden.
+Die schnellen Tests werden mit Go `testing` umgesetzt. `make verify` führt Formatprüfung, `go vet`, Tests mit Race-Detector und Coverage, Build sowie die Docker-Compose-Integrationstests aus. Ziel ist, die fachlichen Regeln und möglichst viel des Betriebs lokal und in GitHub Actions reproduzierbar zu prüfen, ohne produktive Nextcloud-Daten, E-Mails oder Cyon-Zugänge zu verwenden.
 
 ### Testbare Struktur
 
 - Die fachliche Logik für Zeiträume, Priorisierung, Kontaktzuordnung und Benachrichtigungen wird von CalDAV-/CardDAV-Zugriff, Uhr, Mailversand und Dateisystem getrennt. Diese Schnittstellen können in schnellen Tests durch kontrollierbare Testimplementierungen ersetzt werden.
 - Die aktuelle Zeit wird innerhalb des Programms über eine austauschbare Uhr bezogen. Tests geben feste Zeitpunkte einschliesslich Zeitzone vor; im Betrieb wird ausschliesslich die Systemzeit verwendet. Ein Test-Zeitpunkt darf nicht über eine öffentlich erreichbare Anfrage gesetzt werden können.
 - Tests verwenden ausschliesslich synthetische Kontakte, reservierte Beispieladressen und eigene Kalendereinträge. Testkonfiguration und Zugangsdaten sind von der Produktion getrennt; das Testziel darf keine produktiven Endpunkte verwenden.
-- Das Auswerten der beim Abruf gültigen Webseite muss ebenfalls mit einer kontrollierbaren Uhr testbar sein. Das ist nötig, um auch einen ausgebliebenen oder fehlgeschlagenen Lauf zu prüfen, ohne bis zum nächsten Tag zu warten.
+- Tests für die statische HTML-Veröffentlichung prüfen das Escaping und den Inhalt; ein ausgebliebener oder fehlgeschlagener Lauf lässt die bestehende Datei unverändert.
 
 ### Schnelle automatisierte Tests
 
-Für die Umsetzung wird eine PHP-Testsuite, beispielsweise PHPUnit, mit versionierten Testdaten für Kalender und Kontakte vorgesehen. Sie läuft ohne Nextcloud, Mailserver und Cyon und prüft mindestens:
+Die Go-Testsuite verwendet versionierte Testdaten für Kalender und Kontakte. Sie läuft ohne Nextcloud, Mailserver und Cyon und prüft mindestens:
 
 - **Dienstzeiten:** unmittelbar vor, genau um und nach 06:00 Uhr, mehrere aufeinanderfolgende Tage und mehrtägige Ganztageseinträge. Auch Monats- und Jahreswechsel sowie beide Zeitumstellungen in `Europe/Zurich` werden mit festen Daten geprüft.
 - **Priorität und Zuordnung:** kürzerer Eintrag, späterer Erstellungszeitpunkt, aufsteigend sortierte UUID als letzte Entscheidung und unabhängiges Ergebnis bei anderer Eingabereihenfolge. Einladungsantworten verändern die Auswahl nicht; fehlende oder mehrdeutige Personen und Kontakte führen zu einem Hinweis statt einer falschen Nummer.
 - **Erinnerungen und Lücken:** Standardwerte eine Woche und ein Monat sowie abweichende Konfigurationen, Grenzen der Prüfzeiträume und durchgehende Abdeckung. Empfänger, Absender, Inhalt und Zeitpunkt der erzeugten Nachrichten werden überprüft.
-- **Webseite und Templates:** genau ein ausgewählter Kontakt mit Vorname und Telefonnummer, keine anderen Kontakt- oder Kalenderdaten, korrektes Escaping und anpassbare Templates. Ohne gültigen Kontakt wird eine entsprechende Meldung statt einer Nummer angezeigt. Vor und nach Ablauf sowie bei ausgebliebenem oder fehlgeschlagenem Lauf darf keine abgelaufene Nummer erscheinen.
+- **Webseite und Templates:** genau ein ausgewählter Kontakt mit Vorname und Telefonnummer, keine anderen Kontakt- oder Kalenderdaten, korrektes Escaping und anpassbare Templates. Ohne gültigen Kontakt wird eine entsprechende Meldung statt einer Nummer angezeigt. Die Seite ist statisches HTML; nach einem ausgebliebenen oder fehlgeschlagenen Lauf bleibt die zuletzt veröffentlichte Telefonnummer sichtbar.
 - **Fehler und Konfiguration:** ungültige oder fehlende Angaben, nicht erreichbare Dienste, Versand- und Schreibfehler sowie fehlende Berechtigungen. Die Tests prüfen Fehlermeldung, Fehlerprotokoll und Exit-Status; auch ein gescheiterter E-Mail-Versand darf nicht als Erfolg gelten.
 
 ### Lokaler Integrationstest
 
-Eine mit Docker Compose startbare, vom produktiven Betrieb getrennte Testumgebung verwendet PHP 8.3 und die benötigten Erweiterungen. Sie umfasst:
+Eine mit Docker Compose startbare, vom produktiven Betrieb getrennte Go-Testumgebung umfasst:
 
 1. Eine isolierte Nextcloud-Testinstanz mit einem Testaccount, einem Kalender und zwei Adressbüchern. Ein Setup-Schritt richtet sie ein und lädt synthetische CalDAV-/CardDAV-Testdaten, einschliesslich eines ganztägigen mehrtägigen Eintrags, einer Vertretung und einer Lücke.
-2. Einen PHP-Container, der das Programm mit einer separaten Testkonfiguration und einem temporären Ausgabeverzeichnis ausführt. Eine lokal bereitgestellte Webseite wird über HTTP geprüft; das öffentliche Verzeichnis darf weder Konfiguration noch Zugangsdaten enthalten.
-3. Mailpit als lokalen Mailfänger. Der Testcontainer leitet die Sendmail-Schnittstelle von `mail()` mittels `msmtp` an Mailpit um. Der Test überprüft die abgefangenen Nachrichten und ihre Empfänger. Das interne Docker-Netz lässt keine E-Mails ins Internet zu.
+2. Einen Go-Testcontainer, der das Programm mit einer separaten Testkonfiguration und einem temporären Ausgabeverzeichnis ausführt. Die erzeugte HTML-Datei wird geprüft; das öffentliche Verzeichnis darf weder Konfiguration noch Zugangsdaten enthalten.
+3. Mailpit als lokalen Mailfänger. Der Testcontainer leitet den lokalen sendmail-Aufruf mittels `msmtp` an Mailpit um. Der Test überprüft die abgefangenen Nachrichten und ihre Empfänger. Das interne Docker-Netz lässt keine E-Mails ins Internet zu.
 
-Der Test startet die Dienste, wartet auf deren tatsächliche Bereitschaft und führt den täglichen Programmlauf mit einer festen Testzeit aus. Er prüft die angezeigte Person, E-Mails für Erinnerung und Administration, die Gültigkeit der Webseite und den Exit-Status. Danach ändert er einen Kontakt und führt einen weiteren Lauf aus: Die Änderung darf erst dann sichtbar werden. Der reguläre Programmeinstieg wird zusätzlich mit der Systemzeit aufgerufen. Ein weiterer Fall simuliert einen fehlgeschlagenen Datenzugriff und prüft die Fehlermeldung sowie das Ablaufen der Anzeige. Die Testdaten und Container werden anschliessend wieder entfernt. Der Aufruf und die Voraussetzungen stehen in der [README](README.md).
+Der Test soll die Dienste starten, auf deren tatsächliche Bereitschaft warten und den täglichen Programmlauf mit einer festen Testzeit ausführen. Er prüft die angezeigte Person, E-Mails für Erinnerung und Administration, die erzeugte HTML-Datei und den Exit-Status. Danach ändert er einen Kontakt und führt einen weiteren Lauf aus: Die Änderung darf erst dann sichtbar werden. Der reguläre Programmeinstieg wird zusätzlich mit der Systemzeit aufgerufen. Ein weiterer Fall simuliert einen fehlgeschlagenen Datenzugriff. Die Testdaten und Container werden anschliessend wieder entfernt. Der Aufruf und die Voraussetzungen stehen in der [README](README.md).
 
 ### Pipeline und Deployment
 
-- Bei Pull Requests und Pushes führt GitHub Actions Composer-Validierung, PHP-Syntaxprüfung, schnelle Tests und den lokalen Integrationstest aus. Dieselben Testbefehle sollen auch lokal verfügbar und dokumentiert sein.
+- Bei Pull Requests und Pushes führt GitHub Actions Go-Formatprüfung, `go vet`, schnelle Tests, Build und den lokalen Integrationstest aus. Dieselben Testbefehle stehen lokal über `make verify` zur Verfügung.
 - Erst wenn die Prüfungen erfolgreich sind, darf der Deployment-Job bei einem Push auf `main` starten. Pull Requests, insbesondere aus Forks, erhalten keine Deployment-Secrets und können weder auf Cyon noch auf produktive Nextcloud-Daten zugreifen.
 - Die Verarbeitung der Crontab und das Deployment werden unabhängig vom echten Server getestet: Eine isolierte Test-Crontab mit fremden Einträgen und ein temporäres Zielverzeichnis prüfen wiederholtes Ausführen, Erhalt fremder Einträge und Daten sowie Fehler beim Lesen oder Schreiben. Der Test darf weder die echte Crontab noch produktive Serverpfade verändern.
-- Ein automatisierter Test kann nicht nachweisen, dass Cyon `mail()` zustellt, der Cron-Dienst die richtige Zeitzone verwendet oder der produktive Server erreichbar ist. Vor dem Pilotbetrieb werden deshalb auf Cyon mit ausdrücklich freigegebenen Testempfängern ein kontrollierter Mailversand, der Cron-Aufruf und die Anzeige geprüft; Zugangsdaten und personenbezogene Daten dürfen dabei nicht in Logs oder Testartefakten erscheinen.
+- Ein automatisierter Test kann nicht nachweisen, dass Cyon den lokalen Mailversand zustellt, der Cron-Dienst die richtige Zeitzone verwendet oder der produktive Server erreichbar ist. Vor dem Pilotbetrieb werden deshalb auf Cyon mit ausdrücklich freigegebenen Testempfängern ein kontrollierter Mailversand, der Cron-Aufruf und die Anzeige geprüft; Zugangsdaten und personenbezogene Daten dürfen dabei nicht in Logs oder Testartefakten erscheinen.

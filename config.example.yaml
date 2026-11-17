@@ -27,13 +27,14 @@ emergency_email: "admin@example.test"
 reminder_days: 7
 
 # Zeitraum für die Suche nach Lücken ab dem aktuellen Diensttag als
-# positives PHP-Datumsintervall (z. B. P1M für einen Monat).
+# positives ISO-Datumsintervall (z. B. P1M für einen Monat).
 # Die Endgrenze ist exklusiv; dies ist kein Mindestabstand zwischen Diensten.
 gap_interval: "P1M"
 
-# Pfad zur erzeugten PHP-Webseite; das Verzeichnis muss existieren und
-# beschreibbar sein. Der Webserver muss die Datei als PHP ausführen.
-public_page: "/pfad/zum/webverzeichnis/index.php"
+# Pfad zur erzeugten statischen HTML-Seite; das Verzeichnis muss existieren
+# und beschreibbar sein. Bei einem ausgebliebenen Lauf bleibt die zuletzt
+# veröffentlichte Telefonnummer sichtbar, bis eine neue Seite publiziert wird.
+public_page: "/pfad/zum/webverzeichnis/index.html"
 
 # Pfad zum HTML-Template mit den Platzhaltern {{name}} und {{phone}}.
 web_template: "/pfad/zur/installation/templates/web.html"

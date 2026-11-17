@@ -29,7 +29,7 @@ services:
     build:
       context: ../..
       dockerfile: tests/integration/Dockerfile
-    command: ["php", "tests/integration/run.php"]
+    command: ["/app/integration"]
     environment:
       HILFMAL_INTEGRATION_TEST: "1"
     depends_on: [nextcloud, tls, mailpit]
