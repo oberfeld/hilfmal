@@ -8,7 +8,7 @@ import (
 )
 
 func TestServiceDate(t *testing.T) {
-	p := NewPlanner()
+	plannerUT := NewPlanner()
 
 	tests := []struct {
 		name     string
@@ -34,7 +34,7 @@ func TestServiceDate(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result, err := p.ServiceDate(tt.now)
+			result, err := plannerUT.ServiceDate(tt.now)
 			if err != nil {
 				t.Fatal(err)
 			}
