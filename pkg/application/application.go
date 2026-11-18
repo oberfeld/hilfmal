@@ -1,6 +1,7 @@
 package application
 
 import (
+	"errors"
 	"fmt"
 	"log"
 	"net/mail"
@@ -79,7 +80,7 @@ func NewApplication(
 }
 
 // Run executes a daily run and returns 0 on success, 1 on error
-// The web page is only published after successful email sending
+// Admin lookup and email errors do not prevent publication.
 func (a *Application) Run(now time.Time) int {
 	var admins []string
 	stage := "Administrationsadressen lesen"
@@ -94,29 +95,32 @@ func (a *Application) Run(now time.Time) int {
 
 func (a *Application) run(now time.Time, admins *[]string, stage *string) error {
 	var err error
+	var runErr error
+	errorStage := ""
 	*admins, err = a.loadAdmins()
 	if err != nil {
 		*stage = "Administrationsadressen lesen"
-		return err
+		runErr = err
+		errorStage = *stage
 	}
 
 	planner := planner.NewPlanner()
 	today, target, gapEnd, err := a.calculateDateRange(now, planner)
 	if err != nil {
 		*stage = "Datumsbereich berechnen"
-		return err
+		return errors.Join(runErr, err)
 	}
 
 	*stage = "Kalender lesen"
 	events, err := a.loadEvents(today, target, gapEnd)
 	if err != nil {
-		return err
+		return errors.Join(runErr, err)
 	}
 
 	*stage = "Mitwirkende lesen"
 	contacts, err := a.source.Contacts()
 	if err != nil {
-		return err
+		return errors.Join(runErr, err)
 	}
 
 	current := planner.Select(today.Format("2006-01-02"), events, contacts)
@@ -126,7 +130,10 @@ func (a *Application) run(now time.Time, admins *[]string, stage *string) error 
 	if reminder != nil {
 		*stage = "Erinnerung versenden"
 		if err := a.sendReminder(reminder, target); err != nil {
-			return err
+			if errorStage == "" {
+				errorStage = *stage
+			}
+			runErr = errors.Join(runErr, err)
 		}
 	}
 
@@ -134,12 +141,23 @@ func (a *Application) run(now time.Time, admins *[]string, stage *string) error 
 	if len(issues) > 0 {
 		*stage = "Administrationshinweis versenden"
 		if err := a.sendAdminNotices(*admins, issues); err != nil {
-			return err
+			if errorStage == "" {
+				errorStage = *stage
+			}
+			runErr = errors.Join(runErr, err)
 		}
 	}
 
 	*stage = "Webseite veröffentlichen"
-	return a.publisher.Publish(current)
+	publishErr := a.publisher.Publish(current)
+	if publishErr != nil {
+		return errors.Join(runErr, publishErr)
+	}
+	if runErr != nil {
+		*stage = errorStage
+		return runErr
+	}
+	return nil
 }
 
 func (a *Application) loadAdmins() ([]string, error) {

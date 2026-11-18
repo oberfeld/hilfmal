@@ -1,7 +1,9 @@
 package application
 
 import (
+	"bytes"
 	"errors"
+	"log"
 	"strings"
 	"testing"
 	"time"
@@ -10,80 +12,38 @@ import (
 	"oberfeld.be/hilfmal/pkg/planner"
 )
 
-func TestRunSendsReminderAndGapNoticeBeforePublishing(t *testing.T) {
-	source := &fakeSource{
-		admins:   []string{"admin@example.test"},
-		contacts: []models.Contact{{Name: "Aktuell", Phone: "123", Email: "current@example.test"}, {Name: "Person", Phone: "456", Email: "person@example.test"}},
-		events: []models.Event{
-			{UID: "today", Start: "2026-11-01", End: "2026-11-02", Attendees: []string{"current@example.test"}},
-			{UID: "reminder", Start: "2026-11-08", End: "2026-11-09", Attendees: []string{"person@example.test"}},
-		},
-	}
-	mailer := &fakeMailer{}
-	publisher := &fakePublisher{}
-	app := newTestApplication(t, source, mailer, publisher, 7, "P1M")
+func TestAddDateIntervalIncludesWeeksAndDays(t *testing.T) {
+	app := newTestApplication(t, successfulSource(), &fakeMailer{}, &fakePublisher{}, 7, "P1M")
+	start := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
 
-	if got := app.Run(time.Date(2026, 11, 1, 6, 0, 0, 0, zurich(t))); got != 0 {
-		t.Fatalf("Run() = %d, want 0", got)
+	got, err := app.addDateInterval(start, "P1W2D")
+	if err != nil {
+		t.Fatal(err)
 	}
-	if !publisher.published || publisher.contact == nil || publisher.contact.Name != "Aktuell" {
-		t.Fatalf("published contact = %#v", publisher.contact)
-	}
-	if len(mailer.sent) != 2 {
-		t.Fatalf("sent %d messages, want reminder and admin notice", len(mailer.sent))
-	}
-	if mailer.sent[0].to != "person@example.test" || !strings.Contains(mailer.sent[0].body, "2026-11-08") {
-		t.Fatalf("unexpected reminder: %#v", mailer.sent[0])
-	}
-	if mailer.sent[1].to != "admin@example.test" || !strings.Contains(mailer.sent[1].body, "2026-11-02") {
-		t.Fatalf("unexpected admin notice: %#v", mailer.sent[1])
-	}
-	if !source.from.Equal(time.Date(2026, 10, 31, 0, 0, 0, 0, zurich(t))) ||
-		!source.to.Equal(time.Date(2026, 12, 1, 0, 0, 0, 0, zurich(t))) {
-		t.Fatalf("loaded event range = [%s, %s)", source.from, source.to)
+	if want := start.AddDate(0, 0, 9); !got.Equal(want) {
+		t.Fatalf("addDateInterval() = %s, want %s", got, want)
 	}
 }
 
-func TestRunUsesEmergencyAddressWhenAdminReadFails(t *testing.T) {
-	source := &fakeSource{adminErr: errors.New("unavailable")}
-	mailer := &fakeMailer{}
-	app := newTestApplication(t, source, mailer, &fakePublisher{}, 7, "P1M")
+func TestSendAdminNoticesReturnsMailerError(t *testing.T) {
+	app := newTestApplication(t, successfulSource(), &fakeMailer{err: errors.New("mail failed")}, &fakePublisher{}, 7, "P1M")
 
-	if got := app.Run(time.Date(2026, 11, 1, 6, 0, 0, 0, zurich(t))); got != 1 {
-		t.Fatalf("Run() = %d, want 1", got)
-	}
-	if len(mailer.sent) != 1 || mailer.sent[0].to != "emergency@example.test" {
-		t.Fatalf("failure notifications = %#v", mailer.sent)
+	if err := app.sendAdminNotices([]string{"admin@example.test"}, []string{"missing duty"}); err == nil {
+		t.Fatal("sendAdminNotices() returned nil after mail failure")
 	}
 }
 
-func TestRunDoesNotPublishAfterMailFailure(t *testing.T) {
-	mailer := &fakeMailer{err: errors.New("mail failed")}
-	publisher := &fakePublisher{}
-	app := newTestApplication(t, successfulSource(), mailer, publisher, 7, "P1M")
+func TestReportFailureLogsNotificationError(t *testing.T) {
+	var output bytes.Buffer
+	originalOutput := log.Writer()
+	log.SetOutput(&output)
+	defer log.SetOutput(originalOutput)
 
-	if got := app.Run(time.Date(2026, 11, 1, 6, 0, 0, 0, zurich(t))); got != 1 {
-		t.Fatalf("Run() = %d, want 1", got)
-	}
-	if publisher.published {
-		t.Fatal("published despite mail failure")
-	}
-}
+	app := newTestApplication(t, successfulSource(), &fakeMailer{err: errors.New("mail failed")}, &fakePublisher{}, 7, "P1M")
+	app.reportFailure(errors.New("run failed"), "stage", nil)
 
-func TestRunReportsPublisherFailureToAdminsAndEmergency(t *testing.T) {
-	mailer := &fakeMailer{}
-	publisher := &fakePublisher{err: errors.New("publish failed")}
-	app := newTestApplication(t, successfulSource(), mailer, publisher, 7, "P1M")
-
-	if got := app.Run(time.Date(2026, 11, 1, 6, 0, 0, 0, zurich(t))); got != 1 {
-		t.Fatalf("Run() = %d, want 1", got)
-	}
-	if len(mailer.sent) < 3 {
-		t.Fatalf("expected regular messages and two failure notifications, got %d", len(mailer.sent))
-	}
-	last := mailer.sent[len(mailer.sent)-2:]
-	if last[0].to != "admin@example.test" || last[1].to != "emergency@example.test" {
-		t.Fatalf("failure recipients = %#v", last)
+	if !strings.Contains(output.String(), "Failed to send error notification") {
+		t.Fatalf("failure log = %q, want notification delivery error", output.String())
 	}
 }
 

@@ -1,8 +1,9 @@
-.PHONY: build test vet fmt-check verify integration lint clean install help
+.PHONY: build test test-application mutation-test vet fmt-check verify integration lint clean install help
 
 BINARY_NAME=hilfmal
 BINARY_PATH=cmd/$(BINARY_NAME)
 OUTPUT_DIR=bin
+GREMLINS_VERSION=v0.6.0
 
 help:
 	@echo "Hilfmal Go Build System"
@@ -10,6 +11,8 @@ help:
 	@echo "Available targets:"
 	@echo "  build       - Build the hilfmal binary"
 	@echo "  test        - Run all tests"
+	@echo "  test-application - Run the Application BDD scenarios"
+	@echo "  mutation-test - Run mutation tests for all Go packages (requires network on first run)"
 	@echo "  verify      - Check formatting, vet, tests, build, and Docker integration"
 	@echo "  integration - Run isolated Nextcloud and Mailpit integration tests"
 	@echo "  lint        - Run linter (requires golangci-lint)"
@@ -31,6 +34,12 @@ test:
 	@go tool cover -html=coverage.out -o coverage.html
 	@echo "Coverage report: coverage.html"
 
+test-application:
+	@go test -v ./pkg/application
+
+mutation-test:
+	@go run github.com/go-gremlins/gremlins/cmd/gremlins@$(GREMLINS_VERSION) unleash --timeout-coefficient 40
+
 vet:
 	@go vet ./...
 
@@ -42,7 +51,7 @@ fmt-check:
 		exit 1; \
 	fi
 
-verify: fmt-check vet test build integration
+verify: fmt-check vet test test-application build integration
 
 integration:
 	@sh tests/integration/run.sh

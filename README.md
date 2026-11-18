@@ -45,10 +45,22 @@ Texte und Gestaltung stehen in `templates/`; die Pfade und E-Mail-Betreffzeilen 
 
 ## Tests und Migration
 
-Die schnellen Go-Unit-Tests laufen ohne externe Dienste:
+Die Application-Szenarien sind als Godog-BDD formuliert. Sie testen den vollständigen Programmlauf mit In-Memory-Adaptern – einschliesslich fehlgeschlagenem E-Mail-Versand, nicht lesbarem Admin-Adressbuch und trotzdem ausgeführter Veröffentlichung – ohne Nextcloud, SMTP oder Docker. Der schnelle, lesbare Lauf zeigt die geprüften Szenarien direkt an:
+
+```bash
+make test-application
+```
+
+Die übrigen schnellen Go-Tests laufen ebenfalls ohne externe Dienste:
 
 ```bash
 go test ./...
 ```
 
-Die GitHub Action führt `make verify` aus. Der Integrationstest verwendet eine isolierte Nextcloud-Instanz und Mailpit; er benötigt keine produktiven Konten oder Zugangsdaten. Deployment und Cronjob-Einrichtung bleiben offen und müssen vor einer produktiven Umstellung auf Go umgesetzt und geprüft werden.
+Mutationstests für alle Go-Pakete laufen separat und sind nicht Teil von `make verify`, da sie deutlich länger dauern können. Gremlins wird in der festgelegten Version beim ersten Aufruf automatisch geladen:
+
+```bash
+make mutation-test
+```
+
+Die GitHub Action führt `make verify` aus. Der davon getrennte Integrationstest verwendet eine isolierte Nextcloud-Instanz und Mailpit; er benötigt keine produktiven Konten oder Zugangsdaten. Deployment und Cronjob-Einrichtung bleiben offen und müssen vor einer produktiven Umstellung auf Go umgesetzt und geprüft werden.

@@ -3,6 +3,9 @@ package datasource
 import (
 	"fmt"
 	"html"
+	"io"
+	"net/http"
+	"strings"
 	"testing"
 	"time"
 )
@@ -48,6 +51,69 @@ func TestHTTPDAVTransportRequiresHTTPS(t *testing.T) {
 	if _, err := transport.Report("http://cloud.example.test/calendar", "<report/>"); err == nil {
 		t.Fatal("expected insecure DAV URL to fail")
 	}
+}
+
+func TestHTTPDAVTransportRejectsMalformedAndHostlessURLs(t *testing.T) {
+	tests := []struct {
+		name string
+		url  string
+		want string
+	}{
+		{name: "malformed", url: "https://%", want: "invalid DAV URL"},
+		{name: "missing host", url: "https:///calendar", want: "DAV access requires HTTPS"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			transport := NewHTTPDAVTransport("user", "password")
+			if _, err := transport.Report(tt.url, "<report/>"); err == nil || !strings.Contains(err.Error(), tt.want) {
+				t.Fatalf("Report() error = %v, want %q", err, tt.want)
+			}
+		})
+	}
+}
+
+func TestHTTPDAVTransportRejectsUnexpectedStatus(t *testing.T) {
+	transport := NewHTTPDAVTransport("user", "password")
+	transport.client = &http.Client{Transport: roundTripperFunc(func(*http.Request) (*http.Response, error) {
+		return &http.Response{
+			StatusCode: http.StatusOK,
+			Body:       io.NopCloser(strings.NewReader("")),
+			Header:     make(http.Header),
+		}, nil
+	})}
+
+	if _, err := transport.Report("https://cloud.example.test/calendar", "<report/>"); err == nil ||
+		!strings.Contains(err.Error(), "HTTP 200") {
+		t.Fatalf("Report() error = %v, want unexpected HTTP status", err)
+	}
+}
+
+func TestIsSuccessfulDAVStatus(t *testing.T) {
+	tests := []struct {
+		status string
+		want   bool
+	}{
+		{status: "HTTP/1.1 200 OK", want: true},
+		{status: "HTTP/1.1 299 Multi-Status", want: true},
+		{status: "HTTP/1.1 200", want: true},
+		{status: "HTTP/1.1 199 Early", want: false},
+		{status: "HTTP/1.1 300 Multiple Choices", want: false},
+		{status: "HTTP/1.1", want: false},
+		{status: "NOTHTTP/1.1 200 OK", want: false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.status, func(t *testing.T) {
+			if got := isSuccessfulDAVStatus(tt.status); got != tt.want {
+				t.Fatalf("isSuccessfulDAVStatus(%q) = %t, want %t", tt.status, got, tt.want)
+			}
+		})
+	}
+}
+
+type roundTripperFunc func(*http.Request) (*http.Response, error)
+
+func (f roundTripperFunc) RoundTrip(request *http.Request) (*http.Response, error) {
+	return f(request)
 }
 
 type fakeDAV struct {

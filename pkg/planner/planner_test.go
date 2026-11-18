@@ -1,6 +1,7 @@
 package planner
 
 import (
+	"strings"
 	"testing"
 	"time"
 
@@ -246,6 +247,24 @@ func TestPriorityAndMissingCreationTieBreakAreInputOrderIndependent(t *testing.T
 		if got := p.Select("2026-11-01", candidates, contacts); got == nil || got.Name != "A" {
 			t.Fatalf("missing-created UID tie-break selected = %#v, want A", got)
 		}
+	}
+}
+
+func TestIssuesOnlyReportsEventsWithoutAValidContact(t *testing.T) {
+	p := NewPlanner()
+	events := []models.Event{
+		{UID: "valid", Start: "2026-11-01", End: "2026-11-02", Attendees: []string{"person@example.test"}},
+		{UID: "invalid", Start: "2026-11-02", End: "2026-11-03", Attendees: []string{"missing@example.test"}},
+	}
+	contacts := []models.Contact{{Name: "Person", Phone: "123", Email: "person@example.test"}}
+
+	issues := p.Issues(events[:1], contacts)
+	if len(issues) != 0 {
+		t.Fatalf("Issues() for valid assignment = %v, want none", issues)
+	}
+	issues = p.Issues(events, contacts)
+	if len(issues) != 1 || !strings.Contains(issues[0], "invalid") {
+		t.Fatalf("Issues() = %v, want one issue for invalid event", issues)
 	}
 }
 

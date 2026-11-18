@@ -2,6 +2,7 @@ package parser
 
 import (
 	"reflect"
+	"strings"
 	"testing"
 	"time"
 )
@@ -34,6 +35,10 @@ func TestRecurrenceExceptionsAndAttendeeStatuses(t *testing.T) {
 	}
 	if events[1].End != "2026-11-04" {
 		t.Fatalf("exception end = %s", events[1].End)
+	}
+	if events[0].Created == nil || *events[0].Created != "2026-01-01T00:00:00Z" ||
+		events[1].Created == nil || *events[1].Created != "2026-01-01T00:00:00Z" {
+		t.Fatalf("master/exception creation times = %v/%v", events[0].Created, events[1].Created)
 	}
 }
 
@@ -133,6 +138,157 @@ func TestParseVCardRejectsMalformedDataAndPreservesInvalidEmailForValidation(t *
 	}
 	if !reflect.DeepEqual(emails, []string{"not-an-email"}) {
 		t.Fatalf("emails = %v", emails)
+	}
+}
+
+func TestParseCalendarSortsByStartThenUID(t *testing.T) {
+	ical := "BEGIN:VCALENDAR\r\nVERSION:2.0\r\n" +
+		"BEGIN:VEVENT\r\nUID:z\r\nDTSTART;VALUE=DATE:20261102\r\nEND:VEVENT\r\n" +
+		"BEGIN:VEVENT\r\nUID:b\r\nDTSTART;VALUE=DATE:20261101\r\nEND:VEVENT\r\n" +
+		"BEGIN:VEVENT\r\nUID:a\r\nDTSTART;VALUE=DATE:20261101\r\nEND:VEVENT\r\n" +
+		"END:VCALENDAR\r\n"
+
+	events, _, err := NewCalendarParser().Parse(ical, date("2026-11-01"), date("2026-11-03"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(events) != 3 || events[0].UID != "a" || events[1].UID != "b" || events[2].UID != "z" {
+		t.Fatalf("sorted events = %#v, want a, b, z", events)
+	}
+}
+
+func TestParseCalendarHandlesNestedComponents(t *testing.T) {
+	ical := "BEGIN:VCALENDAR\r\nVERSION:2.0\r\n" +
+		"BEGIN:VEVENT\r\nBEGIN:VALARM\r\nUID:ignored\r\nDTSTART;VALUE=DATE:20261102\r\n" +
+		"END:VALARM\r\nUID:with-alarm\r\nDTSTART;VALUE=DATE:20261101\r\n" +
+		"END:VEVENT\r\nEND:VCALENDAR\r\n"
+
+	events, _, err := NewCalendarParser().Parse(ical, date("2026-11-01"), date("2026-11-02"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(events) != 1 || events[0].UID != "with-alarm" {
+		t.Fatalf("events = %#v, want event containing nested alarm", events)
+	}
+}
+
+func TestParseCalendarIgnoresTimezoneComponent(t *testing.T) {
+	ical := "BEGIN:VCALENDAR\r\nVERSION:2.0\r\n" +
+		"BEGIN:VTIMEZONE\r\nTZID:Europe/Zurich\r\nDTSTART:20260329T020000\r\nEND:VTIMEZONE\r\n" +
+		"BEGIN:VEVENT\r\nUID:service\r\nDTSTART;VALUE=DATE:20261101\r\nEND:VEVENT\r\n" +
+		"END:VCALENDAR\r\n"
+
+	events, _, err := NewCalendarParser().Parse(ical, date("2026-11-01"), date("2026-11-02"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(events) != 1 || events[0].UID != "service" {
+		t.Fatalf("events = %#v, want the service event after timezone metadata", events)
+	}
+}
+
+func TestParseCalendarIncludesRDateOccurrences(t *testing.T) {
+	ical := "BEGIN:VCALENDAR\r\nVERSION:2.0\r\n" +
+		"BEGIN:VEVENT\r\nUID:rdate\r\nDTSTART;VALUE=DATE:20261101\r\n" +
+		"RDATE;VALUE=DATE:20261103\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n"
+
+	events, _, err := NewCalendarParser().Parse(ical, date("2026-11-01"), date("2026-11-05"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(events) != 2 || events[0].Start != "2026-11-01" || events[1].Start != "2026-11-03" {
+		t.Fatalf("RDATE occurrences = %#v", events)
+	}
+}
+
+func TestParseReportsAndKeepsStandaloneException(t *testing.T) {
+	ical := "BEGIN:VCALENDAR\r\nVERSION:2.0\r\n" +
+		"BEGIN:VEVENT\r\nUID:orphan\r\nRECURRENCE-ID;VALUE=DATE:20261101\r\n" +
+		"DTSTART;VALUE=DATE:20261101\r\nATTENDEE:mailto:a@example.test\r\nEND:VEVENT\r\n" +
+		"END:VCALENDAR\r\n"
+
+	events, issues, err := NewCalendarParser().Parse(ical, date("2026-11-01"), date("2026-11-02"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(events) != 1 || events[0].UID != "orphan" {
+		t.Fatalf("standalone exception events = %#v", events)
+	}
+	if len(issues) != 1 || !strings.Contains(issues[0], "Ausnahme ohne Serieneintrag") {
+		t.Fatalf("standalone exception issues = %v", issues)
+	}
+}
+
+func TestMalformedLeadingFoldedLineReturnsError(t *testing.T) {
+	ical := " continuation\r\nBEGIN:VCALENDAR\r\nEND:VCALENDAR\r\n"
+	if _, _, err := NewCalendarParser().Parse(ical, date("2026-11-01"), date("2026-11-02")); err == nil {
+		t.Fatal("expected leading folded line to be rejected")
+	}
+}
+
+func TestParsePropertyRejectsEmptyName(t *testing.T) {
+	if _, ok := parseProperty(":value"); ok {
+		t.Fatal("parseProperty() accepted an empty property name")
+	}
+}
+
+func TestAllDayDurationRejectsZeroAndSupportsWeeks(t *testing.T) {
+	start := date("2026-11-01")
+	if _, err := allDayDurationEnd(start, "P0D"); err == nil {
+		t.Fatal("allDayDurationEnd() accepted a zero-day duration")
+	}
+	if got, err := allDayDurationEnd(start, "P1W"); err != nil || !got.Equal(date("2026-11-08")) {
+		t.Fatalf("allDayDurationEnd(P1W) = %s, %v", got, err)
+	}
+}
+
+func TestParseCreatedSupportsBothFormatsAndRejectsInvalidValue(t *testing.T) {
+	tests := []struct {
+		value string
+		want  string
+		ok    bool
+	}{
+		{value: "2026-01-01T00:00:00Z", want: "2026-01-01T00:00:00Z", ok: true},
+		{value: "20260101T000000Z", want: "2026-01-01T00:00:00Z", ok: true},
+		{value: "invalid", ok: false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.value, func(t *testing.T) {
+			got, err := parseCreated(tt.value)
+			if (err == nil) != tt.ok || got != tt.want {
+				t.Fatalf("parseCreated(%q) = %q, %v; want %q, success %t", tt.value, got, err, tt.want, tt.ok)
+			}
+		})
+	}
+}
+
+func TestParseVCardIgnoresMalformedNameWithoutPanicking(t *testing.T) {
+	vcard := "BEGIN:VCARD\r\nVERSION:3.0\r\nN:Mononym\r\nEMAIL:person@example.test\r\nEND:VCARD\r\n"
+	contacts, err := ParseVCard(vcard)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(contacts) != 1 || contacts[0].Name != "" {
+		t.Fatalf("contacts = %#v, want one contact with no parsed given name", contacts)
+	}
+}
+
+func TestWithoutMailtoHandlesPrefixBoundariesAndCase(t *testing.T) {
+	tests := []struct {
+		value string
+		want  string
+	}{
+		{value: "mailto:", want: ""},
+		{value: "MAILTO:ada@example.test", want: "ada@example.test"},
+		{value: "not-an-email", want: "not-an-email"},
+		{value: "short", want: "short"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.value, func(t *testing.T) {
+			if got := withoutMailto(tt.value); got != tt.want {
+				t.Fatalf("withoutMailto(%q) = %q, want %q", tt.value, got, tt.want)
+			}
+		})
 	}
 }
 
