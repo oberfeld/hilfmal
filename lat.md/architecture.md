@@ -36,6 +36,6 @@ Administrative recipients are de-duplicated and complemented by the emergency ad
 
 ## Deployment status
 
-The GitHub workflow deploys the Linux binary and templates to Cyon and configures a daily cron run at 06:00 server time.
+The GitHub workflow deploys a statically linked Linux binary and templates to Cyon and configures a daily cron run at 06:00 server time. The binary does not depend on the server's glibc version.
 
 The Cyon YAML configuration is checked by [[Makefile]] during verification, while credentials are supplied by GitHub secrets and stored outside the public directory.

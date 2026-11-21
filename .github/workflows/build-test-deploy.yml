@@ -43,7 +43,7 @@ jobs:
           DEPLOY_DIR="$RUNNER_TEMP/hilfmal-deploy"
           umask 077
           mkdir -p "$DEPLOY_DIR/templates"
-          GOOS=linux GOARCH=amd64 go build -o "$DEPLOY_DIR/hilfmal" ./cmd/hilfmal
+          CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o "$DEPLOY_DIR/hilfmal" ./cmd/hilfmal
           cp config.cyon.yaml "$DEPLOY_DIR/config.yaml"
           cp templates/admin.txt templates/reminder.txt templates/web.html "$DEPLOY_DIR/templates/"
           user_escaped=${CHISCHTE_UN//\'/\'\\\'\'}

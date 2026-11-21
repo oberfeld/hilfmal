@@ -67,7 +67,7 @@ Die GitHub Action führt `make verify` aus. Der davon getrennte Integrationstest
 
 ### Cyon-Deployment
 
-Pushes auf `main` deployen das Linux-Binary, die Templates und `config.cyon.yaml` nach `/home/wohnenim/hilfmal`. Die erzeugte Webseite liegt unter `/home/wohnenim/public_html/hilfmal/public/index.html`. Die Action setzt den Cyon-Cronjob anhand von `cron_schedule` in `config.cyon.yaml` auf täglich um 06:00 Uhr (Zeitzone des Cyon-Servers).
+Pushes auf `main` deployen das statisch gelinkte Linux-Binary (ohne glibc-Abhängigkeit), die Templates und `config.cyon.yaml` nach `/home/wohnenim/hilfmal`. Die erzeugte Webseite liegt unter `/home/wohnenim/public_html/hilfmal/public/index.html`. Die Action setzt den Cyon-Cronjob anhand von `cron_schedule` in `config.cyon.yaml` auf täglich um 06:00 Uhr (Zeitzone des Cyon-Servers).
 
 Unter **Settings → Secrets and variables → Actions** müssen eingerichtet sein:
 
