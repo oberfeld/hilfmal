@@ -19,40 +19,50 @@ import (
 )
 
 func main() {
-	if len(os.Args) != 2 {
-		fmt.Fprintf(os.Stderr, "Usage: %s /path/to/config.yaml\n", os.Args[0])
-		os.Exit(1)
+	os.Exit(runCLI(os.Args[1:]))
+}
+
+func runCLI(args []string) int {
+	publishOnly := len(args) == 2 && args[0] == "--publish-only"
+	if !publishOnly && (len(args) != 1 || strings.HasPrefix(args[0], "-")) {
+		fmt.Fprintln(os.Stderr, "Usage: hilfmal [--publish-only] /path/to/config.yaml")
+		return 1
 	}
 
-	configPath := os.Args[1]
+	configPath := args[len(args)-1]
 
 	// Load configuration
 	config, err := loadConfig(configPath)
 	if err != nil {
 		log.Printf("Hilfmal: Startup failed: %v", err)
-		os.Exit(1)
+		return 1
+	}
+	notifyStartupError := func() {
+		if !publishOnly {
+			notifyError(config.Sender, config.EmergencyEmail, "Fehler beim Hilfmal-Programmstart")
+		}
 	}
 
 	// Validate configuration
 	if err := validateConfig(config); err != nil {
 		log.Printf("Hilfmal: Startup failed: %v", err)
-		notifyError(config.Sender, config.EmergencyEmail, "Fehler beim Hilfmal-Programmstart")
-		os.Exit(1)
+		notifyStartupError()
+		return 1
 	}
 
 	// Load templates
 	reminderTemplate, err := os.ReadFile(config.ReminderTemplate)
 	if err != nil {
 		log.Printf("Hilfmal: Startup failed: failed to read reminder template: %v", err)
-		notifyError(config.Sender, config.EmergencyEmail, "Fehler beim Hilfmal-Programmstart")
-		os.Exit(1)
+		notifyStartupError()
+		return 1
 	}
 
 	adminTemplate, err := os.ReadFile(config.AdminTemplate)
 	if err != nil {
 		log.Printf("Hilfmal: Startup failed: failed to read admin template: %v", err)
-		notifyError(config.Sender, config.EmergencyEmail, "Fehler beim Hilfmal-Programmstart")
-		os.Exit(1)
+		notifyStartupError()
+		return 1
 	}
 
 	// Set up data source
@@ -66,8 +76,8 @@ func main() {
 	pub, err := publisher.NewFilePublisher(config.PublicPage, config.WebTemplate)
 	if err != nil {
 		log.Printf("Hilfmal: Startup failed: %v", err)
-		notifyError(config.Sender, config.EmergencyEmail, "Fehler beim Hilfmal-Programmstart")
-		os.Exit(1)
+		notifyStartupError()
+		return 1
 	}
 
 	// Create application
@@ -86,13 +96,19 @@ func main() {
 	)
 	if err != nil {
 		log.Printf("Hilfmal: Startup failed: %v", err)
-		notifyError(config.Sender, config.EmergencyEmail, "Fehler beim Hilfmal-Programmstart")
-		os.Exit(1)
+		notifyStartupError()
+		return 1
 	}
 
-	// Run application
-	exitCode := app.Run(time.Now())
-	os.Exit(exitCode)
+	if publishOnly {
+		if err := app.PublishOnly(time.Now()); err != nil {
+			log.Printf("Hilfmal: Publication failed: %v", err)
+			return 1
+		}
+		return 0
+	}
+
+	return app.Run(time.Now())
 }
 
 func loadConfig(path string) (*models.Config, error) {

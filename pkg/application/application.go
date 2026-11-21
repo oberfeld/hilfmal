@@ -93,6 +93,39 @@ func (a *Application) Run(now time.Time) int {
 	return 0
 }
 
+// PublishOnly updates the public page without sending email.
+func (a *Application) PublishOnly(now time.Time) error {
+	p := planner.NewPlanner()
+	date, err := p.ServiceDate(now)
+	if err != nil {
+		return fmt.Errorf("Diensttag berechnen: %w", err)
+	}
+	location, err := time.LoadLocation("Europe/Zurich")
+	if err != nil {
+		return fmt.Errorf("Schweizer Zeitzone laden: %w", err)
+	}
+	start, err := time.ParseInLocation("2006-01-02", date, location)
+	if err != nil {
+		return fmt.Errorf("Diensttag parsen: %w", err)
+	}
+	events, err := a.source.Events(start, start.AddDate(0, 0, 1))
+	if err != nil {
+		return fmt.Errorf("Kalender lesen: %w", err)
+	}
+	contacts, err := a.source.Contacts()
+	if err != nil {
+		return fmt.Errorf("Mitwirkende lesen: %w", err)
+	}
+	issues := append(append([]string(nil), a.source.Issues()...), p.Issues(events, contacts)...)
+	for _, issue := range issues {
+		log.Printf("Hilfmal: Hinweis bei Veröffentlichung: %s", issue)
+	}
+	if err := a.publisher.Publish(p.Select(date, events, contacts)); err != nil {
+		return fmt.Errorf("Webseite veröffentlichen: %w", err)
+	}
+	return nil
+}
+
 func (a *Application) run(now time.Time, admins *[]string, stage *string) error {
 	var err error
 	var runErr error

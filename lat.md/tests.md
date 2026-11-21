@@ -16,6 +16,12 @@ The complete run scenario must publish the selected current contact, send a one-
 
 This is specified by [[pkg/application/features/application.feature]] and implemented by [[pkg/application/application_bdd_test.go#TestApplicationFeatures]].
 
+### Publication-only mode
+
+The publication-only mode selects the current Swiss service day without loading administrators or sending mail, and propagates data-source and publication failures.
+
+This is covered by [[pkg/application/application_test.go#TestPublishOnly]], [[pkg/application/application_test.go#TestSameApplicationCanPublishOnlyAndRun]], [[pkg/application/application_test.go#TestPublishOnlyWithDAVAndFilePublisher]], and [[cmd/hilfmal/main_test.go#TestPublishOnlyStartupFailureDoesNotSendEmail]].
+
 ### Swiss service date and ranges
 
 A run at 06:00 uses the new Swiss service date, while earlier times use the previous day. Calendar reads, month horizons and DST transitions must use the Swiss local date model consistently.

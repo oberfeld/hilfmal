@@ -1,10 +1,14 @@
 package main
 
 import (
+	"bytes"
+	"log"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"gopkg.in/yaml.v3"
 
 	"oberfeld.be/hilfmal/pkg/models"
 )
@@ -73,6 +77,95 @@ public_page: /srv/public/index.html
 	}
 	if config.PublicPage != "/srv/public/index.html" {
 		t.Fatalf("PublicPage = %q, want YAML value", config.PublicPage)
+	}
+}
+
+func TestPublishOnlyStartupFailureDoesNotSendEmail(t *testing.T) {
+	for _, tt := range []struct {
+		name        string
+		user        string
+		password    string
+		missingFile string
+		wantLog     string
+	}{
+		{name: "missing credentials", wantLog: "dav_user"},
+		{name: "missing web template", user: "user", password: "password", missingFile: "web", wantLog: "read web template"},
+		{name: "missing reminder template", user: "user", password: "password", missingFile: "reminder", wantLog: "read reminder template"},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			directory := t.TempDir()
+			marker := filepath.Join(directory, "mail-sent")
+			sendmail := filepath.Join(directory, "sendmail")
+			if err := os.WriteFile(sendmail, []byte("#!/bin/sh\nprintf sent > \"$MAIL_MARKER\"\n"), 0700); err != nil {
+				t.Fatal(err)
+			}
+			t.Setenv("PATH", directory)
+			t.Setenv("MAIL_MARKER", marker)
+			t.Setenv("HILFMAL_DAV_USER", tt.user)
+			t.Setenv("HILFMAL_DAV_PASSWORD", tt.password)
+			path := filepath.Join(directory, "config.yaml")
+			config := validTestConfig()
+			config.PublicPage = filepath.Join(directory, "index.html")
+			config.WebTemplate = filepath.Join(directory, "web.html")
+			config.ReminderTemplate = filepath.Join(directory, "reminder.txt")
+			config.AdminTemplate = filepath.Join(directory, "admin.txt")
+			for name, templatePath := range map[string]string{
+				"web": config.WebTemplate, "reminder": config.ReminderTemplate, "admin": config.AdminTemplate,
+			} {
+				if name != tt.missingFile {
+					if err := os.WriteFile(templatePath, []byte("template"), 0600); err != nil {
+						t.Fatal(err)
+					}
+				}
+			}
+			configYAML, err := yaml.Marshal(config)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(path, configYAML, 0600); err != nil {
+				t.Fatal(err)
+			}
+
+			var output bytes.Buffer
+			originalOutput := log.Writer()
+			log.SetOutput(&output)
+			defer log.SetOutput(originalOutput)
+			if code := runCLI([]string{"--publish-only", path}); code != 1 {
+				t.Fatalf("runCLI() = %d, want failure", code)
+			}
+			if !strings.Contains(output.String(), tt.wantLog) {
+				t.Fatalf("startup log = %q, want %q", output.String(), tt.wantLog)
+			}
+			if _, err := os.Stat(marker); !os.IsNotExist(err) {
+				t.Fatalf("publication-only startup must not send email; marker error = %v", err)
+			}
+		})
+	}
+}
+
+func TestNormalStartupFailureStillSendsEmail(t *testing.T) {
+	directory := t.TempDir()
+	marker := filepath.Join(directory, "mail-sent")
+	if err := os.WriteFile(filepath.Join(directory, "sendmail"), []byte("#!/bin/sh\nprintf sent > \"$MAIL_MARKER\"\n"), 0700); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("PATH", directory)
+	t.Setenv("MAIL_MARKER", marker)
+	t.Setenv("HILFMAL_DAV_USER", "")
+	t.Setenv("HILFMAL_DAV_PASSWORD", "")
+	configYAML, err := yaml.Marshal(validTestConfig())
+	if err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join(directory, "config.yaml")
+	if err := os.WriteFile(path, configYAML, 0600); err != nil {
+		t.Fatal(err)
+	}
+	if code := runCLI([]string{path}); code != 1 {
+		t.Fatalf("runCLI() = %d, want failure", code)
+	}
+	if _, err := os.Stat(marker); err != nil {
+		t.Fatalf("normal startup did not send an error notification: %v", err)
 	}
 }
 

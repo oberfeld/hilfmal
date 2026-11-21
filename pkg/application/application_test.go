@@ -3,13 +3,18 @@ package application
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"log"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
 
+	"oberfeld.be/hilfmal/pkg/datasource"
 	"oberfeld.be/hilfmal/pkg/models"
 	"oberfeld.be/hilfmal/pkg/planner"
+	"oberfeld.be/hilfmal/pkg/publisher"
 )
 
 func TestAddDateIntervalIncludesWeeksAndDays(t *testing.T) {
@@ -67,26 +72,215 @@ func TestMonthRangeUsesSwissLocalMidnight(t *testing.T) {
 	}
 }
 
+// @lat: [[tests#Tests#Daily application workflow#Publication-only mode]]
+func TestPublishOnly(t *testing.T) {
+	tests := []struct {
+		name        string
+		now         time.Time
+		source      *fakeSource
+		publisher   *fakePublisher
+		wantContact string
+		wantDate    string
+		wantErr     string
+		wantHours   int
+	}{
+		{
+			name:        "current contact",
+			now:         time.Date(2026, 11, 1, 6, 0, 0, 0, zurich(t)),
+			source:      successfulSource(),
+			publisher:   &fakePublisher{},
+			wantContact: "current@example.test",
+			wantDate:    "2026-11-01",
+		},
+		{
+			name:        "before six uses previous service day",
+			now:         time.Date(2026, 11, 2, 5, 59, 0, 0, zurich(t)),
+			source:      successfulSource(),
+			publisher:   &fakePublisher{},
+			wantContact: "current@example.test",
+			wantDate:    "2026-11-01",
+		},
+		{
+			name:      "no contact",
+			now:       time.Date(2026, 11, 2, 6, 0, 0, 0, zurich(t)),
+			source:    successfulSource(),
+			publisher: &fakePublisher{},
+			wantDate:  "2026-11-02",
+		},
+		{
+			name: "service day spans daylight saving transition",
+			now:  time.Date(2026, 3, 29, 6, 0, 0, 0, zurich(t)),
+			source: &fakeSource{
+				contacts: []models.Contact{{Name: "Ada", Phone: "123", Email: "ada@example.test"}},
+				events:   []models.Event{{UID: "dst", Start: "2026-03-29", End: "2026-03-30", Attendees: []string{"ada@example.test"}}},
+			},
+			publisher:   &fakePublisher{},
+			wantContact: "ada@example.test",
+			wantDate:    "2026-03-29",
+			wantHours:   23,
+		},
+		{
+			name:      "calendar error",
+			now:       time.Date(2026, 11, 1, 6, 0, 0, 0, zurich(t)),
+			source:    &fakeSource{eventsErr: errors.New("calendar failed")},
+			publisher: &fakePublisher{},
+			wantErr:   "calendar failed",
+		},
+		{
+			name:      "contacts error",
+			now:       time.Date(2026, 11, 1, 6, 0, 0, 0, zurich(t)),
+			source:    &fakeSource{contactsErr: errors.New("contacts failed")},
+			publisher: &fakePublisher{},
+			wantErr:   "contacts failed",
+		},
+		{
+			name:      "publication error",
+			now:       time.Date(2026, 11, 1, 6, 0, 0, 0, zurich(t)),
+			source:    successfulSource(),
+			publisher: &fakePublisher{err: errors.New("publish failed")},
+			wantErr:   "publish failed",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.source.adminErr = errors.New("admins must not be loaded")
+			mail := &fakeMailer{}
+			app := newTestApplication(t, tt.source, mail, tt.publisher, 7, "P1M")
+			err := app.PublishOnly(tt.now)
+			if tt.source.adminCalls != 0 {
+				t.Fatal("publication-only mode loaded administrators")
+			}
+			if len(mail.sent) != 0 {
+				t.Fatalf("publication-only mode sent %d emails", len(mail.sent))
+			}
+			if tt.wantErr != "" {
+				if err == nil || !strings.Contains(err.Error(), tt.wantErr) {
+					t.Fatalf("PublishOnly() error = %v, want %q", err, tt.wantErr)
+				}
+				if tt.publisher.published {
+					t.Fatal("page was published after a failure")
+				}
+				return
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !tt.publisher.published {
+				t.Fatal("page was not published")
+			}
+			if tt.wantContact == "" {
+				if tt.publisher.contact != nil {
+					t.Fatalf("published unexpected contact: %+v", tt.publisher.contact)
+				}
+			} else if tt.publisher.contact == nil || tt.publisher.contact.Email != tt.wantContact {
+				t.Fatalf("published contact = %+v, want %s", tt.publisher.contact, tt.wantContact)
+			}
+			if tt.source.from.Format("2006-01-02 15:04") != tt.wantDate+" 00:00" ||
+				!tt.source.to.Equal(tt.source.from.AddDate(0, 0, 1)) {
+				t.Fatalf("calendar range = %s to %s, want Swiss service day %s", tt.source.from, tt.source.to, tt.wantDate)
+			}
+			if tt.wantHours != 0 && tt.source.to.Sub(tt.source.from) != time.Duration(tt.wantHours)*time.Hour {
+				t.Fatalf("calendar range duration = %s, want %d hours", tt.source.to.Sub(tt.source.from), tt.wantHours)
+			}
+		})
+	}
+}
+
+func TestPublishOnlyWithDAVAndFilePublisher(t *testing.T) {
+	directory := t.TempDir()
+	templatePath := filepath.Join(directory, "web.html")
+	if err := os.WriteFile(templatePath, []byte("<p>{{name}} {{phone}}</p>"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	outputPath := filepath.Join(directory, "index.html")
+	pub, err := publisher.NewFilePublisher(outputPath, templatePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	source := datasource.NewNextcloudSource(publicationDAV{}, "calendar", "contacts", "admins")
+	mail := &fakeMailer{}
+	app, err := NewApplication(source, mail, pub, "sender@example.test", "emergency@example.test",
+		"Erinnerung", "Hinweis", "Erinnerung", "Hinweis", 7, "P1M")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := app.PublishOnly(time.Date(2026, 11, 1, 6, 0, 0, 0, zurich(t))); err != nil {
+		t.Fatal(err)
+	}
+	if len(mail.sent) != 0 {
+		t.Fatalf("publication-only mode sent %d emails", len(mail.sent))
+	}
+	page, err := os.ReadFile(outputPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(page) != "<p>Ada +41 79 123 45 67</p>" {
+		t.Fatalf("published page = %q", page)
+	}
+}
+
+func TestSameApplicationCanPublishOnlyAndRun(t *testing.T) {
+	source := successfulSource()
+	mail := &fakeMailer{}
+	pub := &fakePublisher{}
+	app := newTestApplication(t, source, mail, pub, 7, "P1M")
+	now := time.Date(2026, 11, 1, 6, 0, 0, 0, zurich(t))
+
+	if err := app.PublishOnly(now); err != nil {
+		t.Fatal(err)
+	}
+	if len(mail.sent) != 0 || !pub.published {
+		t.Fatalf("publication-only run: published = %t, emails = %d", pub.published, len(mail.sent))
+	}
+	if code := app.Run(now); code != 0 {
+		t.Fatalf("normal run returned %d", code)
+	}
+	if len(mail.sent) == 0 || source.adminCalls == 0 {
+		t.Fatal("normal run did not send notifications or load administrators")
+	}
+}
+
+type publicationDAV struct{}
+
+func (publicationDAV) Report(endpoint, _ string) (string, error) {
+	var element, content string
+	switch endpoint {
+	case "calendar":
+		element = "c:calendar-data"
+		content = "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nBEGIN:VEVENT\r\nUID:test\r\nDTSTART;VALUE=DATE:20261029\r\nDTEND;VALUE=DATE:20261105\r\nATTENDEE:mailto:ada@example.test\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n"
+	case "contacts":
+		element = "a:address-data"
+		content = "BEGIN:VCARD\r\nVERSION:3.0\r\nN:Test;Ada;;;\r\nFN:Ada Test\r\nTEL:+41 79 123 45 67\r\nEMAIL:ada@example.test\r\nEND:VCARD\r\n"
+	default:
+		return "", fmt.Errorf("unexpected DAV endpoint: %s", endpoint)
+	}
+	return fmt.Sprintf(`<d:multistatus xmlns:d="DAV:" xmlns:c="urn:ietf:params:xml:ns:caldav" xmlns:a="urn:ietf:params:xml:ns:carddav"><d:response><d:propstat><d:prop><%s><![CDATA[%s]]></%s></d:prop><d:status>HTTP/1.1 200 OK</d:status></d:propstat></d:response></d:multistatus>`, element, content, element), nil
+}
+
 type fakeSource struct {
-	admins   []string
-	adminErr error
-	contacts []models.Contact
-	events   []models.Event
-	from     time.Time
-	to       time.Time
+	admins      []string
+	adminErr    error
+	adminCalls  int
+	contacts    []models.Contact
+	contactsErr error
+	events      []models.Event
+	eventsErr   error
+	from        time.Time
+	to          time.Time
 }
 
 func (s *fakeSource) Admins() ([]string, error) {
+	s.adminCalls++
 	return s.admins, s.adminErr
 }
 
 func (s *fakeSource) Contacts() ([]models.Contact, error) {
-	return s.contacts, nil
+	return s.contacts, s.contactsErr
 }
 
 func (s *fakeSource) Events(from, to time.Time) ([]models.Event, error) {
 	s.from, s.to = from, to
-	return s.events, nil
+	return s.events, s.eventsErr
 }
 
 func (s *fakeSource) Issues() []string {

@@ -16,6 +16,8 @@ Each run:
 
 This separation makes a data adapter failure, mail failure and publication failure observable through exit status while preserving the publication fallback used for contact and mail-stage errors.
 
+The deployment uses [[pkg/application/application.go#Application#PublishOnly]] on the same configured application to refresh only the current page. This mode does not load administrator contacts or send mail; failures are logged and returned to the deployment.
+
 ## Data adapters
 
 [[pkg/datasource/interface.go#DataSource]] defines Admins, Contacts, Events and a list of source issues. [[pkg/datasource/nextcloud.go#NextcloudSource]] implements it through CalDAV and CardDAV REPORT requests over HTTPS.
