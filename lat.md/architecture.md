@@ -24,7 +24,7 @@ The HTTP DAV transport requires HTTPS, sets Basic Authentication, rejects non-Mu
 
 ## Configuration and templates
 
-The `models.Config` shape in [[pkg/models/models.go#Config]] is the configuration contract. The example in [[config.example.yaml]] documents protected credentials, DAV URLs, reminder lead time, gap interval and file paths.
+The `models.Config` shape in [[pkg/models/models.go#Config]] is the configuration contract. [[config.cyon.yaml]] documents DAV URLs, reminder lead time, gap interval and file paths; credentials are supplied separately.
 
 Templates separate copy and presentation from logic: [[templates/reminder.txt]], [[templates/admin.txt]], and [[templates/web.html]]. Sender and subject values are configuration, and the local mail implementation in [[pkg/mailer/mailer.go#SystemMailer]] submits UTF-8 MIME messages to a sendmail-compatible command.
 
@@ -35,4 +35,7 @@ Mail, publication and DAV failures are logged and produce exit status 1. A mail 
 Administrative recipients are de-duplicated and complemented by the emergency address for failure reports. Configuration and secrets must remain outside the public web directory, and DAV endpoints must use HTTPS. The application never exposes a test clock or operational control endpoint.
 
 ## Deployment status
-Deployment and Cron setup are not implemented. The target is an at-06:00 Europe/Zurich server run with protected configuration.
+
+The GitHub workflow deploys the Linux binary and templates to Cyon and configures a daily cron run at 06:00 server time.
+
+The Cyon YAML configuration is checked by [[Makefile]] during verification, while credentials are supplied by GitHub secrets and stored outside the public directory.

@@ -30,6 +30,52 @@ func TestLoadConfigRequiresIntegerReminderDays(t *testing.T) {
 	}
 }
 
+func TestLoadConfigOverridesRuntimeSettingsFromEnvironment(t *testing.T) {
+	for name, value := range map[string]string{
+		"HILFMAL_DAV_USER":     "nextcloud-user",
+		"HILFMAL_DAV_PASSWORD": "nextcloud-password",
+	} {
+		t.Setenv(name, value)
+	}
+
+	path := filepath.Join(t.TempDir(), "config.yaml")
+	yaml := `reminder_days: 7
+dav_user: yaml-user
+calendar_url: https://yaml.example.test/calendar
+contacts_url: https://yaml.example.test/contacts
+admins_url: https://yaml.example.test/admins
+sender: yaml@example.test
+emergency_email: emergency@example.test
+public_page: /srv/public/index.html
+`
+	if err := os.WriteFile(path, []byte(yaml), 0600); err != nil {
+		t.Fatal(err)
+	}
+
+	config, err := loadConfig(path)
+	if err != nil {
+		t.Fatalf("loadConfig() error = %v", err)
+	}
+	if config.DAVUser != "nextcloud-user" || config.DAVPassword != "nextcloud-password" {
+		t.Fatalf("credentials = (%q, %q), want environment values", config.DAVUser, config.DAVPassword)
+	}
+	if config.CalendarURL != "https://yaml.example.test/calendar" {
+		t.Fatalf("CalendarURL = %q, want YAML value", config.CalendarURL)
+	}
+	if config.ContactsURL != "https://yaml.example.test/contacts" {
+		t.Fatalf("ContactsURL = %q, want YAML value", config.ContactsURL)
+	}
+	if config.AdminsURL != "https://yaml.example.test/admins" {
+		t.Fatalf("AdminsURL = %q, want YAML value", config.AdminsURL)
+	}
+	if config.Sender != "yaml@example.test" || config.EmergencyEmail != "emergency@example.test" {
+		t.Fatalf("email addresses = (%q, %q), want YAML values", config.Sender, config.EmergencyEmail)
+	}
+	if config.PublicPage != "/srv/public/index.html" {
+		t.Fatalf("PublicPage = %q, want YAML value", config.PublicPage)
+	}
+}
+
 func TestValidateConfigRejectsNonHTTPSAndInvalidAddresses(t *testing.T) {
 	config := validTestConfig()
 	config.CalendarURL = "http://cloud.example.test/calendar"

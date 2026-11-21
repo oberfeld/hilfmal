@@ -20,7 +20,7 @@ Die diensthabende Person ist Anlaufstelle für Jugendliche und Anwohnende: Sie v
 
 ## Go-Anwendung
 
-Die Go-Anwendung liegt als Modul direkt in der Repository-Wurzel; `cmd/` enthält die Programmeinstiege, `pkg/` die Fachpakete. Die GitHub Action führt die Go-Prüfungen und die isolierten Docker-Integrationstests mit Nextcloud und Mailpit aus. Deployment und Cronjob-Einrichtung sind noch nicht umgesetzt; die Anwendung ist daher noch nicht für ein produktives Deployment freigegeben.
+Die Go-Anwendung liegt als Modul direkt in der Repository-Wurzel; `cmd/` enthält die Programmeinstiege, `pkg/` die Fachpakete. Die GitHub Action führt die Go-Prüfungen und die isolierten Docker-Integrationstests mit Nextcloud und Mailpit aus. Pushes auf `main` deployen die Linux-Anwendung zu Cyon und aktualisieren den täglichen Cronjob.
 
 Voraussetzungen sind eine installierte Go-Toolchain sowie Docker Compose v2 für die vollständige Verifikation.
 
@@ -28,13 +28,13 @@ Voraussetzungen sind eine installierte Go-Toolchain sowie Docker Compose v2 für
 make verify
 ```
 
-`make verify` prüft die Formatierung, führt `go vet`, die Tests mit Race-Detector und Coverage aus, baut das Binary und startet die isolierten Nextcloud-/Mailpit-Integrationstests. Für nur die schnellen Go-Prüfungen können `make test`, `make vet` und `make build` getrennt ausgeführt werden.
+`make verify` prüft die Cyon-Konfiguration und Formatierung, führt `go vet`, die Tests mit Race-Detector und Coverage aus, baut das Binary und startet die isolierten Nextcloud-/Mailpit-Integrationstests. Für nur die schnellen Prüfungen können `make config-check`, `make test`, `make vet` und `make build` getrennt ausgeführt werden.
 
-Für einen Programmlauf `config.example.yaml` als YAML-Konfigurationsdatei ausserhalb des öffentlich erreichbaren Webverzeichnisses ablegen und die Werte anpassen. Das App-Passwort und die Notfall-E-Mail-Adresse müssen gesetzt sein. Die drei DAV-URLs bezeichnen den Kalender sowie die Adressbücher der Mitwirkenden und der Administration. Template-Pfade müssen auf die Dateien im Installationsverzeichnis zeigen.
+Für einen lokalen Programmlauf `config.cyon.yaml` als `config.local.yaml` kopieren und die Werte für eine isolierte Testumgebung anpassen. Insbesondere müssen die DAV-URLs, E-Mail-Adressen sowie Template- und Ausgabepfade angepasst werden. Nextcloud-Benutzername und App-Passwort können in der lokalen YAML-Datei als `dav_user` und `dav_password` oder über `HILFMAL_DAV_USER` und `HILFMAL_DAV_PASSWORD` gesetzt werden. Zugangsdaten und lokale Konfiguration ausserhalb des öffentlichen Webverzeichnisses aufbewahren und nicht einchecken.
 
 ```bash
 make build
-./bin/hilfmal /pfad/zur/konfiguration.yaml
+./bin/hilfmal config.local.yaml
 ```
 
 Der Aufruf verwendet die Systemzeit und greift über HTTPS auf Nextcloud zu. Er versendet E-Mails über den lokalen `sendmail`-Befehl und veröffentlicht eine HTML-Datei. Deshalb nur isolierte Testkonten, Testempfänger und ein separates Ausgabeverzeichnis verwenden.
@@ -63,4 +63,17 @@ Mutationstests für alle Go-Pakete laufen separat und sind nicht Teil von `make 
 make mutation-test
 ```
 
-Die GitHub Action führt `make verify` aus. Der davon getrennte Integrationstest verwendet eine isolierte Nextcloud-Instanz und Mailpit; er benötigt keine produktiven Konten oder Zugangsdaten. Deployment und Cronjob-Einrichtung bleiben offen und müssen vor einer produktiven Umstellung auf Go umgesetzt und geprüft werden.
+Die GitHub Action führt `make verify` aus. Der davon getrennte Integrationstest verwendet eine isolierte Nextcloud-Instanz und Mailpit; er benötigt keine produktiven Konten oder Zugangsdaten.
+
+### Cyon-Deployment
+
+Pushes auf `main` deployen das Linux-Binary, die Templates und `config.cyon.yaml` nach `/home/wohnenim/hilfmal`. Die erzeugte Webseite liegt unter `/home/wohnenim/public_html/hilfmal/public/index.html`. Die Action setzt den Cyon-Cronjob anhand von `cron_schedule` in `config.cyon.yaml` auf täglich um 06:00 Uhr (Zeitzone des Cyon-Servers).
+
+Unter **Settings → Secrets and variables → Actions** müssen eingerichtet sein:
+
+- Secret `PRIVATE_KEY`: der SSH-Private-Key für Cyon. Ein im Chat offengelegter Schlüssel muss zuerst rotiert und auf Cyon ersetzt werden.
+- Secrets `CHISCHTE_UN` und `CHISCHTE_PW`: Nextcloud-Benutzername und -Passwort. Die Action schreibt sie als `HILFMAL_DAV_USER` und `HILFMAL_DAV_PASSWORD` in `/home/wohnenim/hilfmal/.env`; der Cronjob lädt die Datei.
+- Variable `CYON_KNOWN_HOSTS`: die verifizierte Known-Hosts-Zeile für exakt `oberfeld.be` (die `HostName`-Angabe in der Action), damit die Action den Server authentifiziert. Bei `ssh-keyscan -H` nur die Zeile ab `|1|...` übernehmen; Kommentarzeilen mit `#` sind optional.
+
+Kalender-/Adressbuch-URLs sowie Absender- und Notfall-E-Mail-Adresse müssen in `config.cyon.yaml` eingetragen werden. Die Pfade und übrigen festen Einstellungen für Cyon stehen ebenfalls dort.
+Für die Prüfung mit `make config-check` müssen `calendar_url`, `contacts_url`, `admins_url`, `sender`, `emergency_email` und `cron_schedule` jeweils genau einmal ohne Einrückung als nichtleerer, doppelt zitierter Wert in einer Zeile stehen. Der Cron-Ausdruck besteht aus fünf numerischen Feldern mit den Zeichen `*`, `,`, `-` und `/`.

@@ -25,3 +25,80 @@ jobs:
 
       - name: Go-Anwendung verifizieren
         run: make verify
+
+      - name: Deployment vorbereiten
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        env:
+          CHISCHTE_UN: ${{ secrets.CHISCHTE_UN }}
+          CHISCHTE_PW: ${{ secrets.CHISCHTE_PW }}
+        run: |
+          if [ -z "$CHISCHTE_UN" ] || [ -z "$CHISCHTE_PW" ]; then
+            echo "GitHub Secrets CHISCHTE_UN und CHISCHTE_PW müssen gesetzt sein."
+            exit 1
+          fi
+
+          CRON_SCHEDULE="$(bash scripts/check-cyon-config.sh config.cyon.yaml --cron)"
+          printf 'CRON_SCHEDULE=%s\n' "$CRON_SCHEDULE" >> "$GITHUB_ENV"
+
+          DEPLOY_DIR="$RUNNER_TEMP/hilfmal-deploy"
+          umask 077
+          mkdir -p "$DEPLOY_DIR/templates"
+          GOOS=linux GOARCH=amd64 go build -o "$DEPLOY_DIR/hilfmal" ./cmd/hilfmal
+          cp config.cyon.yaml "$DEPLOY_DIR/config.yaml"
+          cp templates/admin.txt templates/reminder.txt templates/web.html "$DEPLOY_DIR/templates/"
+          user_escaped=${CHISCHTE_UN//\'/\'\\\'\'}
+          password_escaped=${CHISCHTE_PW//\'/\'\\\'\'}
+          printf "HILFMAL_DAV_USER='%s'\nHILFMAL_DAV_PASSWORD='%s'\n" \
+            "$user_escaped" "$password_escaped" > "$DEPLOY_DIR/.env"
+
+      - name: SSH-Verbindung konfigurieren
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        env:
+          PRIVATE_KEY: ${{ secrets.PRIVATE_KEY }}
+          CYON_KNOWN_HOSTS: ${{ vars.CYON_KNOWN_HOSTS }}
+        run: |
+          if [ -z "$PRIVATE_KEY" ]; then
+            echo "GitHub Secret PRIVATE_KEY ist nicht gesetzt."
+            exit 1
+          fi
+          if [ -z "$CYON_KNOWN_HOSTS" ]; then
+            echo "GitHub Actions Variable CYON_KNOWN_HOSTS ist nicht gesetzt."
+            exit 1
+          fi
+
+          SSH_PATH="$HOME/.ssh"
+          mkdir -p "$SSH_PATH"
+          printf '%s\n' "$PRIVATE_KEY" > "$SSH_PATH/deploy_key"
+          printf '%s\n' "$CYON_KNOWN_HOSTS" > "$SSH_PATH/known_hosts"
+          chmod 600 "$SSH_PATH/deploy_key" "$SSH_PATH/known_hosts"
+          cat > "$SSH_PATH/config" <<EOF
+          Host cyon
+            HostName oberfeld.be
+            User wohnenim
+            IdentityFile $SSH_PATH/deploy_key
+            IdentitiesOnly yes
+            StrictHostKeyChecking yes
+            UserKnownHostsFile $SSH_PATH/known_hosts
+          EOF
+          chmod 600 "$SSH_PATH/config"
+
+      - name: Dateien auf Cyon deployen und Cronjob einrichten
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: |
+          DEPLOY_DIR="$RUNNER_TEMP/hilfmal-deploy"
+          ssh cyon 'mkdir -p /home/wohnenim/hilfmal /home/wohnenim/public_html/hilfmal/public'
+          rsync -az --delete "$DEPLOY_DIR/" cyon:/home/wohnenim/hilfmal/
+          ssh cyon "CRON_SCHEDULE='$CRON_SCHEDULE' sh -s" <<'REMOTE'
+          set -eu
+          chmod 700 /home/wohnenim/hilfmal/hilfmal
+          chmod 600 /home/wohnenim/hilfmal/.env
+
+          cron_job="$CRON_SCHEDULE cd /home/wohnenim/hilfmal && set -a && . /home/wohnenim/hilfmal/.env && set +a && /home/wohnenim/hilfmal/hilfmal /home/wohnenim/hilfmal/config.yaml # hilfmal deployment"
+          existing_crontab="$(crontab -l 2>/dev/null || true)"
+          {
+            if [ -n "$existing_crontab" ]; then
+              printf '%s\n' "$existing_crontab" | grep -Fv '# hilfmal deployment' || true
+            fi
+            printf '%s\n' "$cron_job"
+          } | crontab -
+          REMOTE

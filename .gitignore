@@ -7,7 +7,6 @@
 /coverage.html
 /config.yaml
 /config.local.yaml
-!config.example.yaml
 /.vscode/
 /.idea/
 *.swp

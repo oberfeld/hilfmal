@@ -115,8 +115,24 @@ func loadConfig(path string) (*models.Config, error) {
 	if err := yaml.Unmarshal(data, &config); err != nil {
 		return nil, fmt.Errorf("invalid YAML configuration: %w", err)
 	}
+	applyEnvironmentConfig(&config)
 
 	return &config, nil
+}
+
+func applyEnvironmentConfig(config *models.Config) {
+	fields := []struct {
+		name   string
+		target *string
+	}{
+		{name: "HILFMAL_DAV_USER", target: &config.DAVUser},
+		{name: "HILFMAL_DAV_PASSWORD", target: &config.DAVPassword},
+	}
+	for _, field := range fields {
+		if value, ok := os.LookupEnv(field.name); ok {
+			*field.target = value
+		}
+	}
 }
 
 func validateConfig(config *models.Config) error {

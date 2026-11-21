@@ -1,4 +1,4 @@
-.PHONY: build test test-application mutation-test vet fmt-check verify integration lint clean install help
+.PHONY: build test test-application mutation-test vet fmt-check config-check verify integration lint clean install run help
 
 BINARY_NAME=hilfmal
 BINARY_PATH=cmd/$(BINARY_NAME)
@@ -13,13 +13,14 @@ help:
 	@echo "  test        - Run all tests"
 	@echo "  test-application - Run the Application BDD scenarios"
 	@echo "  mutation-test - Run mutation tests for all Go packages (requires network on first run)"
-	@echo "  verify      - Check formatting, vet, tests, build, and Docker integration"
+	@echo "  config-check - Check the Cyon deployment configuration"
+	@echo "  verify      - Check config, formatting, vet, tests, build, and Docker integration"
 	@echo "  integration - Run isolated Nextcloud and Mailpit integration tests"
 	@echo "  lint        - Run linter (requires golangci-lint)"
 	@echo "  fmt         - Format code"
 	@echo "  clean       - Remove build artifacts"
 	@echo "  install     - Install binary to GOPATH/bin"
-	@echo "  run         - Run with default config (for development)"
+	@echo "  run         - Run with config.local.yaml (for development)"
 	@echo "  help        - Show this help message"
 
 build:
@@ -51,7 +52,10 @@ fmt-check:
 		exit 1; \
 	fi
 
-verify: fmt-check vet test test-application build integration
+config-check:
+	@bash scripts/check-cyon-config.sh config.cyon.yaml
+
+verify: config-check fmt-check vet test test-application build integration
 
 integration:
 	@sh tests/integration/run.sh
@@ -76,5 +80,5 @@ install: build
 	@echo "Installed to $(GOPATH)/bin/$(BINARY_NAME)"
 
 run: build
-	@echo "Running $(BINARY_NAME) with config.example.yaml..."
-	@./$(OUTPUT_DIR)/$(BINARY_NAME) config.example.yaml
+	@echo "Running $(BINARY_NAME) with config.local.yaml..."
+	@./$(OUTPUT_DIR)/$(BINARY_NAME) config.local.yaml

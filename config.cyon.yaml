@@ -1,0 +1,50 @@
+# Nextcloud-Benutzername und App-Passwort werden nicht hier gespeichert:
+# GitHub Actions übernimmt sie aus CHISCHTE_UN und CHISCHTE_PW und legt sie
+# geschützt ausserhalb des öffentlichen Webverzeichnisses in .env ab.
+
+# Vorlauf der Dienst-Erinnerung in ganzen Tagen; 0 bedeutet am Diensttag.
+reminder_days: 7
+
+# Zeitraum für die Suche nach Lücken ab dem aktuellen Diensttag als
+# positives ISO-Datumsintervall (z. B. P1M für einen Monat).
+# Die Endgrenze ist exklusiv; dies ist kein Mindestabstand zwischen Diensten.
+gap_interval: "P1M"
+
+# Täglicher Programmlauf um 06:00 Uhr in der Zeitzone des Cyon-Servers.
+cron_schedule: "0 6 * * *"
+
+# HTTPS-Adresse des Dienstplan-Kalenders (CalDAV).
+calendar_url: "https://chischte.oberfeld.be/remote.php/dav/calendars/Hilfmal/personal/"
+
+# HTTPS-Adresse des Adressbuchs mit den Kontakten der Mitwirkenden (CardDAV).
+contacts_url: "https://chischte.oberfeld.be/remote.php/dav/addressbooks/users/Hilfmal/mitwirkende/"
+
+# HTTPS-Adresse des separaten Administrationsadressbuchs (CardDAV).
+admins_url: "https://chischte.oberfeld.be/remote.php/dav/addressbooks/users/Hilfmal/koordinator/"
+
+# Absender- und Antwortadresse der vom Programm versendeten E-Mails.
+sender: "hilfmal@oberfeld.be"
+
+# Zusätzliche Empfängeradresse für Fehler, insbesondere wenn das
+# Administrationsadressbuch nicht gelesen werden kann.
+emergency_email: "emanuel@inthemill.ch"
+
+# Pfad zur erzeugten statischen HTML-Seite; das Verzeichnis muss existieren
+# und beschreibbar sein. Bei einem ausgebliebenen Lauf bleibt die zuletzt
+# veröffentlichte Telefonnummer sichtbar, bis eine neue Seite publiziert wird.
+public_page: "/home/wohnenim/public_html/hilfmal/public/index.html"
+
+# Pfad zum HTML-Template mit den Platzhaltern {{name}} und {{phone}}.
+web_template: "/home/wohnenim/hilfmal/templates/web.html"
+
+# Pfad zum E-Mail-Template für Erinnerungen mit {{name}} und {{date}}.
+reminder_template: "/home/wohnenim/hilfmal/templates/reminder.txt"
+
+# Pfad zum E-Mail-Template für Hinweise an die Administration mit {{issues}}.
+admin_template: "/home/wohnenim/hilfmal/templates/admin.txt"
+
+# Betreff der Erinnerungs-E-Mail an Mitwirkende.
+reminder_subject: "Erinnerung an deinen Hilfmal-Dienst"
+
+# Betreff der E-Mail mit Lücken und anderen Dienstplanhinweisen.
+admin_subject: "Hinweise zum Hilfmal-Dienstplan"
