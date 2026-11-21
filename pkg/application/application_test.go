@@ -187,35 +187,45 @@ func TestPublishOnly(t *testing.T) {
 }
 
 func TestPublishOnlyWithDAVAndFilePublisher(t *testing.T) {
-	directory := t.TempDir()
-	templatePath := filepath.Join(directory, "web.html")
-	if err := os.WriteFile(templatePath, []byte("<p>{{name}} {{phone}}</p>"), 0600); err != nil {
-		t.Fatal(err)
-	}
-	outputPath := filepath.Join(directory, "index.html")
-	pub, err := publisher.NewFilePublisher(outputPath, templatePath)
-	if err != nil {
-		t.Fatal(err)
-	}
-	source := datasource.NewNextcloudSource(publicationDAV{}, "calendar", "contacts", "admins")
-	mail := &fakeMailer{}
-	app, err := NewApplication(source, mail, pub, "sender@example.test", "emergency@example.test",
-		"Erinnerung", "Hinweis", "Erinnerung", "Hinweis", 7, "P1M")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := app.PublishOnly(time.Date(2026, 11, 1, 6, 0, 0, 0, zurich(t))); err != nil {
-		t.Fatal(err)
-	}
-	if len(mail.sent) != 0 {
-		t.Fatalf("publication-only mode sent %d emails", len(mail.sent))
-	}
-	page, err := os.ReadFile(outputPath)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if string(page) != "<p>Ada +41 79 123 45 67</p>" {
-		t.Fatalf("published page = %q", page)
+	for _, tt := range []struct {
+		name           string
+		calendarFields string
+	}{
+		{name: "attendee", calendarFields: "ATTENDEE:mailto:ada@example.test\r\n"},
+		{name: "title", calendarFields: "SUMMARY:Ada ist zuständig\r\n"},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			directory := t.TempDir()
+			templatePath := filepath.Join(directory, "web.html")
+			if err := os.WriteFile(templatePath, []byte("<p>{{name}} {{phone}}</p>"), 0600); err != nil {
+				t.Fatal(err)
+			}
+			outputPath := filepath.Join(directory, "index.html")
+			pub, err := publisher.NewFilePublisher(outputPath, templatePath)
+			if err != nil {
+				t.Fatal(err)
+			}
+			source := datasource.NewNextcloudSource(publicationDAV{calendarFields: tt.calendarFields}, "calendar", "contacts", "admins")
+			mail := &fakeMailer{}
+			app, err := NewApplication(source, mail, pub, "sender@example.test", "emergency@example.test",
+				"Erinnerung", "Hinweis", "Erinnerung", "Hinweis", 7, "P1M")
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := app.PublishOnly(time.Date(2026, 11, 1, 6, 0, 0, 0, zurich(t))); err != nil {
+				t.Fatal(err)
+			}
+			if len(mail.sent) != 0 {
+				t.Fatalf("publication-only mode sent %d emails", len(mail.sent))
+			}
+			page, err := os.ReadFile(outputPath)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if string(page) != "<p>Ada +41 79 123 45 67</p>" {
+				t.Fatalf("published page = %q", page)
+			}
+		})
 	}
 }
 
@@ -240,14 +250,54 @@ func TestSameApplicationCanPublishOnlyAndRun(t *testing.T) {
 	}
 }
 
-type publicationDAV struct{}
+func TestSameNamedContactsPublishAndNotifyAdmin(t *testing.T) {
+	for _, tt := range []struct {
+		name     string
+		lastName string
+		summary  string
+	}{
+		{name: "same full name", lastName: "Test", summary: "Alex Test"},
+		{name: "same first name", lastName: "Anders", summary: "Alex"},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			source := &fakeSource{
+				admins: []string{"admin@example.test"},
+				contacts: []models.Contact{
+					{Name: "Alex", LastName: "Test", Phone: "456", Email: "z@example.test"},
+					{Name: "Alex", LastName: tt.lastName, Phone: "123", Email: "a@example.test"},
+				},
+				events: []models.Event{{UID: "duty", Start: "2026-11-01", End: "2026-12-02", Summary: tt.summary}},
+			}
+			mail := &fakeMailer{}
+			pub := &fakePublisher{}
+			app := newTestApplication(t, source, mail, pub, 7, "P1M")
+			if code := app.Run(time.Date(2026, 11, 1, 6, 0, 0, 0, zurich(t))); code != 0 {
+				t.Fatalf("Run() = %d, want success", code)
+			}
+			if !pub.published || pub.contact == nil || pub.contact.Email != "a@example.test" || pub.contact.Phone != "123" {
+				t.Fatalf("published contact = %#v", pub.contact)
+			}
+			for _, message := range mail.sent {
+				if message.to == "admin@example.test" && strings.Contains(message.body, "a@example.test") &&
+					strings.Contains(message.body, "Mehrere Kontakte") {
+					return
+				}
+			}
+			t.Fatalf("no admin warning for selected contact: %#v", mail.sent)
+		})
+	}
+}
 
-func (publicationDAV) Report(endpoint, _ string) (string, error) {
+type publicationDAV struct {
+	calendarFields string
+}
+
+func (d publicationDAV) Report(endpoint, _ string) (string, error) {
 	var element, content string
 	switch endpoint {
 	case "calendar":
 		element = "c:calendar-data"
-		content = "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nBEGIN:VEVENT\r\nUID:test\r\nDTSTART;VALUE=DATE:20261029\r\nDTEND;VALUE=DATE:20261105\r\nATTENDEE:mailto:ada@example.test\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n"
+		content = "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nBEGIN:VEVENT\r\nUID:test\r\nDTSTART;VALUE=DATE:20261029\r\nDTEND;VALUE=DATE:20261105\r\n" + d.calendarFields + "END:VEVENT\r\nEND:VCALENDAR\r\n"
 	case "contacts":
 		element = "a:address-data"
 		content = "BEGIN:VCARD\r\nVERSION:3.0\r\nN:Test;Ada;;;\r\nFN:Ada Test\r\nTEL:+41 79 123 45 67\r\nEMAIL:ada@example.test\r\nEND:VCARD\r\n"

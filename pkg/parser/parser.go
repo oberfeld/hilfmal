@@ -21,7 +21,10 @@ type calendarEvent struct {
 	uid          string
 	start        time.Time
 	end          time.Time
+	summary      string
+	hasSummary   bool
 	attendees    []string
+	organizer    string
 	created      *string
 	status       string
 	rules        []string
@@ -245,12 +248,14 @@ func parseCalendarEvent(properties []property, issues *[]string) (*calendarEvent
 		return nil, fmt.Errorf("Kalendereintrag benötigt eine UID.")
 	}
 	startProp, hasStart := first(values["DTSTART"])
-	if !hasStart {
-		return nil, fmt.Errorf("Dienst %s benötigt ein ganztägiges Startdatum.", uid)
-	}
 	start, err := eventDate(startProp)
-	if err != nil {
-		return nil, fmt.Errorf("Dienst %s benötigt ein ganztägiges Startdatum.", uid)
+	if !hasStart || err != nil {
+		title := unescapeText(firstValue(values["SUMMARY"]))
+		if strings.TrimSpace(title) == "" {
+			title = "(ohne Titel)"
+		}
+		return nil, fmt.Errorf("Dienst %q (UID: %s, Start: %s) benötigt ein ganztägiges Startdatum.",
+			title, uid, describeStart(startProp, hasStart))
 	}
 
 	end := start.AddDate(0, 0, 1)
@@ -270,6 +275,10 @@ func parseCalendarEvent(properties []property, issues *[]string) (*calendarEvent
 	}
 
 	event := &calendarEvent{uid: uid, start: start, end: end}
+	if prop, ok := first(values["SUMMARY"]); ok {
+		event.summary = unescapeText(prop.value)
+		event.hasSummary = true
+	}
 	if prop, ok := first(values["CREATED"]); ok {
 		if created, err := parseCreated(prop.value); err == nil {
 			event.created = &created
@@ -278,12 +287,9 @@ func parseCalendarEvent(properties []property, issues *[]string) (*calendarEvent
 	if prop, ok := first(values["STATUS"]); ok {
 		event.status = strings.ToUpper(prop.value)
 	}
+	event.organizer = withoutMailto(firstValue(values["ORGANIZER"]))
 	for _, prop := range values["ATTENDEE"] {
-		email := prop.value
-		if len(email) >= len("mailto:") && strings.EqualFold(email[:len("mailto:")], "mailto:") {
-			email = email[len("mailto:"):]
-		}
-		event.attendees = append(event.attendees, email)
+		event.attendees = append(event.attendees, withoutMailto(prop.value))
 	}
 	for _, prop := range values["RRULE"] {
 		event.rules = append(event.rules, prop.value)
@@ -312,6 +318,23 @@ func parseCalendarEvent(properties []property, issues *[]string) (*calendarEvent
 		event.recurrenceID = &recurrenceID
 	}
 	return event, nil
+}
+
+func describeStart(prop property, present bool) string {
+	if !present {
+		return "fehlt"
+	}
+	if start, err := time.Parse("20060102T150405Z", prop.value); err == nil {
+		return start.Format("02.01.2006 15:04:05") + " UTC"
+	}
+	if start, err := time.Parse("20060102T150405", prop.value); err == nil {
+		description := start.Format("02.01.2006 15:04:05")
+		if zone := prop.params["TZID"]; zone != "" {
+			return description + " (" + strconv.Quote(zone) + ")"
+		}
+		return description + " (Zeitzone nicht angegeben)"
+	}
+	return strconv.Quote(prop.value)
 }
 
 func expandEvent(event *calendarEvent, from, to time.Time) ([]time.Time, error) {
@@ -362,8 +385,15 @@ func filterRecurrenceDates(dates, exclusions []time.Time, from, to time.Time) []
 
 func mergeOverride(master, override *calendarEvent) *calendarEvent {
 	copy := *override
+	if !copy.hasSummary {
+		copy.summary = master.summary
+		copy.hasSummary = master.hasSummary
+	}
 	if len(copy.attendees) == 0 {
 		copy.attendees = append([]string(nil), master.attendees...)
+	}
+	if copy.organizer == "" {
+		copy.organizer = master.organizer
 	}
 	if copy.created == nil {
 		copy.created = master.created
@@ -384,7 +414,9 @@ func toModelEvent(uid string, event *calendarEvent) models.Event {
 		UID:       uid,
 		Start:     event.start.Format("2006-01-02"),
 		End:       event.end.Format("2006-01-02"),
+		Summary:   event.summary,
 		Attendees: append([]string(nil), event.attendees...),
+		Organizer: event.organizer,
 		Created:   event.created,
 	}
 }
@@ -464,10 +496,9 @@ func uniqueStrings(values []string) []string {
 	return result
 }
 
-// ParseVCard extracts the first name, telephone number, and one contact per
-// email property.
+// ParseVCard extracts the name, telephone number, and email addresses.
 func ParseVCard(vcard string) ([]models.Contact, error) {
-	var firstName, phone string
+	var firstName, lastName, phone string
 	var emails []string
 	properties, err := readVCard(vcard)
 	if err != nil {
@@ -476,8 +507,9 @@ func ParseVCard(vcard string) ([]models.Contact, error) {
 	for _, prop := range properties {
 		switch prop.name {
 		case "N":
-			parts := strings.Split(prop.value, ";")
+			parts := splitVCardName(prop.value)
 			if len(parts) > 1 {
+				lastName = unescapeText(parts[0])
 				firstName = unescapeText(parts[1])
 			}
 		case "TEL":
@@ -488,11 +520,29 @@ func ParseVCard(vcard string) ([]models.Contact, error) {
 			emails = append(emails, withoutMailto(strings.TrimSpace(prop.value)))
 		}
 	}
-	contacts := make([]models.Contact, 0, len(emails))
-	for _, email := range emails {
-		contacts = append(contacts, models.Contact{Name: firstName, Phone: phone, Email: email})
+	if len(emails) == 0 {
+		return nil, nil
 	}
-	return contacts, nil
+	return []models.Contact{{
+		Name: firstName, LastName: lastName, Phone: phone, Email: emails[0], AdditionalEmails: emails[1:],
+	}}, nil
+}
+
+func splitVCardName(value string) []string {
+	var parts []string
+	start := 0
+	escaped := false
+	for i, r := range value {
+		if escaped {
+			escaped = false
+		} else if r == '\\' {
+			escaped = true
+		} else if r == ';' {
+			parts = append(parts, value[start:i])
+			start = i + 1
+		}
+	}
+	return append(parts, value[start:])
 }
 
 func ParseVCardEmails(vcard string) ([]string, error) {

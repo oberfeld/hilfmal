@@ -5,15 +5,19 @@ type Event struct {
 	UID       string   // Unique identifier
 	Start     string   // Date in YYYY-MM-DD format (inclusive)
 	End       string   // Date in YYYY-MM-DD format (exclusive)
+	Summary   string   // Calendar event title
 	Attendees []string // Email addresses of attendees
+	Organizer string   // Email address of the organizer
 	Created   *string  // ISO8601 timestamp, nil if not set
 }
 
 // Contact represents a person in the contacts list
 type Contact struct {
-	Name  string // First name
-	Phone string // Phone number
-	Email string // Email address (unique key)
+	Name             string   // First name
+	LastName         string   // Family name
+	Phone            string   // Phone number
+	Email            string   // First email address
+	AdditionalEmails []string // Other email addresses for the same person
 }
 
 // Config represents the application configuration

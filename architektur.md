@@ -10,7 +10,7 @@ Die fachlichen Grundlagen stehen im [Konzept](konzept.md); die Bedienung für Mi
 
 - Der Dienstplan wird über CalDAV aus dem Nextcloud-Kalender gelesen.
 - Die Mitwirkenden und die Administrationsadressen werden über CardDAV aus zwei getrennten Nextcloud-Adressbüchern gelesen.
-- Die eingeladene Person eines Kalendereintrags wird anhand ihrer eindeutigen E-Mail-Adresse einem Kontakt zugeordnet. Vorname und Telefonnummer stammen aus diesem Kontakt.
+- Die eingeladene Person eines Kalendereintrags wird anhand ihrer E-Mail-Adresse einem Kontakt zugeordnet. Alternativ kann die Person anhand ihres Namens im Titel oder der organisierenden Person gefunden werden. Vorname und Telefonnummer stammen aus dem Kontakt.
 - Der Einladungsstatus wird nicht berücksichtigt: Ob eine Person zugesagt, abgesagt oder noch nicht geantwortet hat, ändert die Zuordnung nicht.
 - Für den Zugriff auf Kalender und Adressbücher wird für den Service-Account ein eigenes App-Passwort erzeugt und verwendet.
 
@@ -18,7 +18,7 @@ Der eigene Nextcloud-Service-Account besitzt den Kalender und beide Adressbüche
 
 ### Entscheid zur Personenzuordnung
 
-Die Kontakte im Adressbuch «Mitwirkende» enthalten Vorname, Telefonnummer und eine für die Zuordnung eindeutige E-Mail-Adresse. Die diensthabende Person wird einzeln als Teilnehmerin oder Teilnehmer zum Kalendereintrag hinzugefügt; ihre E-Mail-Adresse verbindet den Eintrag mit dem Kontakt.
+Die Kontakte im Adressbuch «Mitwirkende» enthalten Vorname, Nachname, Telefonnummer und E-Mail-Adresse. Innerhalb eines Eintrags wird zuerst eine gültige eingeladene Person ausser der organisierenden Person anhand der E-Mail-Adresse ausgewählt. Danach wird der Titel anhand vollständiger Vor- und bei Bedarf Nachnamen abgeglichen. Fehlt bei gleichem Vornamen der Nachname oder haben passende Personen denselben Vor- und Nachnamen, wird nach der alphabetisch ersten gültigen E-Mail-Adresse gewählt und die Administration benachrichtigt; bei identischer E-Mail-Adresse entscheidet die Telefonnummer. Andere ungelöste Mehrdeutigkeiten verhindern die Zuordnung. Nur wenn der Titel keine Person enthält, wird die organisierende Person anhand ihrer E-Mail-Adresse berücksichtigt. Bei mehreren E-Mail-Adressen eines Kontakts wird für eine Titelzuordnung die erste gültige verwendet; bei einer Einladung die eingeladene Adresse.
 
 Als Alternativen wurden Nextcloud Tables mit einer Personenkennung im Kalendereintrag sowie eine Tabellen- oder JSON-Datei verworfen. Sie ermöglichen ebenfalls das Auslesen durch das Programm, erfordern aber eine separat gepflegte Zuordnung und nutzen die Teilnehmerfunktion des Kalenders nicht direkt.
 
@@ -29,7 +29,7 @@ Als Alternativen wurden Nextcloud Tables mit einer Personenkennung im Kalenderei
 - Überschneiden sich Einträge, hat der kürzere Eintrag Vorrang. Sind sie gleich lang, hat der später erstellte Eintrag Vorrang. So kann eine Vertretung durch einen kürzeren oder bei gleicher Dauer später erstellten Eintrag organisiert werden.
 - Kann die Priorität damit nicht bestimmt werden, etwa bei gleichem oder fehlendem Erstellungszeitpunkt, werden die UUIDs der Einträge alphanumerisch aufsteigend sortiert. Der erste Eintrag hat Vorrang.
 - Fehlt bei mindestens einem Eintrag gleicher Dauer der Erstellungszeitpunkt, entscheidet für diese Dauergruppe die UUID-Reihenfolge. So bleibt die Auswahl unabhängig von der Reihenfolge der eingelesenen Einträge.
-- Pro Dienstzeitraum wird wenn möglich genau ein Kontakt ausgewählt und auf der Webseite angezeigt. Ist der Kontakt des vorrangigen Eintrags nicht eindeutig oder unvollständig, wird der nächste gültige Eintrag verwendet und die Administration informiert. Gibt es keinen gültigen Eintrag, wird keine Telefonnummer veröffentlicht.
+- Pro Dienstzeitraum wird wenn möglich genau ein Kontakt ausgewählt und auf der Webseite angezeigt. Ist der Kontakt des vorrangigen Eintrags unvollständig oder nicht eindeutig zuordenbar, wird der nächste gültige Eintrag verwendet und die Administration informiert. Bei gleichem Vornamen oder gleichem Vor- und Nachnamen wird gegebenenfalls wie oben beschrieben ein Kontakt ausgewählt und gemeldet. Gibt es keinen gültigen Eintrag, wird keine Telefonnummer veröffentlicht.
 - Wiederkehrende ganztägige Einträge und deren Ausnahmen werden berücksichtigt.
 
 ## Aufgaben des Go-Programms
@@ -92,7 +92,7 @@ Die schnellen Tests werden mit Go `testing` umgesetzt. `make verify` führt Form
 Die Go-Testsuite verwendet versionierte Testdaten für Kalender und Kontakte. Sie läuft ohne Nextcloud, Mailserver und Cyon und prüft mindestens:
 
 - **Dienstzeiten:** unmittelbar vor, genau um und nach 06:00 Uhr, mehrere aufeinanderfolgende Tage und mehrtägige Ganztageseinträge. Auch Monats- und Jahreswechsel sowie beide Zeitumstellungen in `Europe/Zurich` werden mit festen Daten geprüft.
-- **Priorität und Zuordnung:** kürzerer Eintrag, späterer Erstellungszeitpunkt, aufsteigend sortierte UUID als letzte Entscheidung und unabhängiges Ergebnis bei anderer Eingabereihenfolge. Einladungsantworten verändern die Auswahl nicht; fehlende oder mehrdeutige Personen und Kontakte führen zu einem Hinweis statt einer falschen Nummer.
+- **Priorität und Zuordnung:** kürzerer Eintrag, späterer Erstellungszeitpunkt, aufsteigend sortierte UUID als letzte Entscheidung und unabhängiges Ergebnis bei anderer Eingabereihenfolge. Einladungsantworten verändern die Auswahl nicht; fehlende oder mehrdeutige Personen und Kontakte führen zu einem Hinweis. Bei gleichem Vornamen oder gleichem Vor- und Nachnamen wird gegebenenfalls ein Kontakt ausgewählt und gemeldet.
 - **Erinnerungen und Lücken:** Standardwerte eine Woche und ein Monat sowie abweichende Konfigurationen, Grenzen der Prüfzeiträume und durchgehende Abdeckung. Empfänger, Absender, Inhalt und Zeitpunkt der erzeugten Nachrichten werden überprüft.
 - **Webseite und Templates:** genau ein ausgewählter Kontakt mit Vorname und Telefonnummer, keine anderen Kontakt- oder Kalenderdaten, korrektes Escaping und anpassbare Templates. Ohne gültigen Kontakt wird eine entsprechende Meldung statt einer Nummer angezeigt. Die Seite ist statisches HTML; nach einem ausgebliebenen oder fehlgeschlagenen Lauf bleibt die zuletzt veröffentlichte Telefonnummer sichtbar.
 - **Fehler und Konfiguration:** ungültige oder fehlende Angaben, nicht erreichbare Dienste, Versand- und Schreibfehler sowie fehlende Berechtigungen. Die Tests prüfen Fehlermeldung, Fehlerprotokoll und Exit-Status; auch ein gescheiterter E-Mail-Versand darf nicht als Erfolg gelten.

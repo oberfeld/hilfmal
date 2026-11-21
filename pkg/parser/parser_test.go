@@ -43,6 +43,33 @@ func TestRecurrenceExceptionsAndAttendeeStatuses(t *testing.T) {
 	}
 }
 
+func TestOrganizerOnRecurringEvents(t *testing.T) {
+	ical := "BEGIN:VCALENDAR\nVERSION:2.0\n" +
+		"BEGIN:VEVENT\nUID:series\nDTSTART;VALUE=DATE:20261101\nRRULE:FREQ=DAILY;COUNT=4\n" +
+		"SUMMARY:Dienst\\, Ada\nORGANIZER;CN=Organizer:MAILTO:organizer@example.test\nEND:VEVENT\n" +
+		"BEGIN:VEVENT\nUID:series\nRECURRENCE-ID;VALUE=DATE:20261102\nDTSTART;VALUE=DATE:20261102\nEND:VEVENT\n" +
+		"BEGIN:VEVENT\nUID:series\nRECURRENCE-ID;VALUE=DATE:20261103\nDTSTART;VALUE=DATE:20261103\n" +
+		"SUMMARY:Anderer Dienst\nORGANIZER:mailto:replacement@example.test\nEND:VEVENT\n" +
+		"BEGIN:VEVENT\nUID:series\nRECURRENCE-ID;VALUE=DATE:20261104\nDTSTART;VALUE=DATE:20261104\nSUMMARY:\nEND:VEVENT\nEND:VCALENDAR\n"
+	events, issues, err := NewCalendarParser().Parse(ical, date("2026-11-01"), date("2026-11-05"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(issues) != 0 || len(events) != 4 {
+		t.Fatalf("events = %#v, issues = %#v", events, issues)
+	}
+	for i, want := range []string{"organizer@example.test", "organizer@example.test", "replacement@example.test", "organizer@example.test"} {
+		if events[i].Organizer != want {
+			t.Errorf("event %d organizer = %q, want %q", i, events[i].Organizer, want)
+		}
+	}
+	for i, want := range []string{"Dienst, Ada", "Dienst, Ada", "Anderer Dienst", ""} {
+		if events[i].Summary != want {
+			t.Errorf("event %d summary = %q, want %q", i, events[i].Summary, want)
+		}
+	}
+}
+
 func TestInvalidEntriesAreReportedWithoutDiscardingValidOnes(t *testing.T) {
 	ical := "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//Test//EN\r\n" +
 		"BEGIN:VEVENT\r\nUID:bad\r\nDTSTART:20261101T080000Z\r\nEND:VEVENT\r\n" +
@@ -58,6 +85,53 @@ func TestInvalidEntriesAreReportedWithoutDiscardingValidOnes(t *testing.T) {
 	}
 	if len(issues) == 0 {
 		t.Fatal("expected invalid event issue")
+	}
+}
+
+// @lat: [[tests#Tests#Calendar and contact resolution#Identifying invalid start dates]]
+func TestInvalidStartIssueIdentifiesEvent(t *testing.T) {
+	tests := []struct {
+		name       string
+		properties string
+		want       string
+	}{
+		{
+			name:       "UTC timed event",
+			properties: "SUMMARY:Dienst\\, Beispiel\nDTSTART:20261123T100000Z\n",
+			want:       `Dienst "Dienst, Beispiel" (UID: invalid, Start: 23.11.2026 10:00:00 UTC) benötigt ein ganztägiges Startdatum.`,
+		},
+		{
+			name:       "time with timezone",
+			properties: "SUMMARY:Testdienst\nDTSTART;TZID=Europe/Zurich:20261123T110000\n",
+			want:       `Dienst "Testdienst" (UID: invalid, Start: 23.11.2026 11:00:00 ("Europe/Zurich")) benötigt ein ganztägiges Startdatum.`,
+		},
+		{
+			name:       "time without timezone",
+			properties: "SUMMARY:Testdienst\nDTSTART:20261123T110000\n",
+			want:       `Dienst "Testdienst" (UID: invalid, Start: 23.11.2026 11:00:00 (Zeitzone nicht angegeben)) benötigt ein ganztägiges Startdatum.`,
+		},
+		{
+			name:       "missing start and title",
+			properties: "",
+			want:       `Dienst "(ohne Titel)" (UID: invalid, Start: fehlt) benötigt ein ganztägiges Startdatum.`,
+		},
+		{
+			name:       "malformed start",
+			properties: "SUMMARY:Testdienst\nDTSTART:kein Datum\n",
+			want:       `Dienst "Testdienst" (UID: invalid, Start: "kein Datum") benötigt ein ganztägiges Startdatum.`,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ical := "BEGIN:VCALENDAR\nBEGIN:VEVENT\nUID:invalid\n" + tt.properties + "END:VEVENT\nEND:VCALENDAR\n"
+			events, issues, err := NewCalendarParser().Parse(ical, date("2026-11-01"), date("2026-12-01"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if len(events) != 0 || len(issues) != 1 || issues[0] != tt.want {
+				t.Fatalf("events = %#v, issues = %#v; want issue %q", events, issues, tt.want)
+			}
+		})
 	}
 }
 
@@ -123,9 +197,18 @@ func TestParseVCardUsesGivenNameAndEmails(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(contacts) != 2 || contacts[0].Name != "Ada" || contacts[0].Phone != "+41 12" ||
-		contacts[0].Email != "ada@example.test" || contacts[1].Email != "ada.work@example.test" {
+	if len(contacts) != 1 || contacts[0].Name != "Ada" || contacts[0].LastName != "Lovelace" ||
+		contacts[0].Phone != "+41 12" || contacts[0].Email != "ada@example.test" ||
+		!reflect.DeepEqual(contacts[0].AdditionalEmails, []string{"ada.work@example.test"}) {
 		t.Fatalf("contacts = %#v", contacts)
+	}
+}
+
+func TestParseVCardEscapedNameSeparator(t *testing.T) {
+	vcard := "BEGIN:VCARD\nVERSION:3.0\nN:Van\\;Buren;Ada;;;\nEMAIL:ada@example.test\nEND:VCARD\n"
+	contacts, err := ParseVCard(vcard)
+	if err != nil || len(contacts) != 1 || contacts[0].Name != "Ada" || contacts[0].LastName != "Van;Buren" {
+		t.Fatalf("ParseVCard() = %#v, %v", contacts, err)
 	}
 }
 

@@ -51,6 +51,8 @@ Die Application-Szenarien sind als Godog-BDD formuliert. Sie testen den vollstä
 make test-application
 ```
 
+Die Szenarien zur Kontaktzuordnung stehen in `pkg/planner/features/kontaktzuordnung.feature` und lassen sich mit `go test -v ./pkg/planner -run TestContactFeatures` ausführen.
+
 Die übrigen schnellen Go-Tests laufen ebenfalls ohne externe Dienste:
 
 ```bash

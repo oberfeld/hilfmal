@@ -38,11 +38,29 @@ Shorter events win overlapping entries, and equal-duration events use later crea
 
 This intent is covered by [[pkg/planner/planner_test.go#TestSelect]] and [[pkg/planner/planner_test.go#TestPriorityAndMissingCreationTieBreakAreInputOrderIndependent]].
 
+### Organizer fallback
+
+Valid attendees other than the organizer take priority within an entry; otherwise an unambiguous title or a valid organizer can be selected without changing priority between overlapping entries.
+
+This is specified by [[pkg/planner/features/kontaktzuordnung.feature]] and covered by [[pkg/planner/contact_bdd_test.go#TestContactFeatures]], [[pkg/planner/planner_test.go#TestOrganizerFallback]], and [[pkg/parser/parser_test.go#TestOrganizerOnRecurringEvents]].
+
+### Title-based contact resolution
+
+Calendar titles select complete contacts by first name, using family names to resolve ambiguity. Equal first names without a surname and identical full names select by email and produce a warning; other ambiguity remains unresolved.
+
+This is specified by [[pkg/planner/features/kontaktzuordnung.feature]] and covered by [[pkg/planner/contact_bdd_test.go#TestContactFeatures]], [[pkg/planner/planner_test.go#TestSummaryFallback]], [[pkg/parser/parser_test.go#TestOrganizerOnRecurringEvents]], [[pkg/parser/parser_test.go#TestParseVCardUsesGivenNameAndEmails]], [[pkg/application/application_test.go#TestPublishOnlyWithDAVAndFilePublisher]], and [[pkg/application/application_test.go#TestSameNamedContactsPublishAndNotifyAdmin]].
+
 ### Recurrence and all-day parsing
 
 Recurrences and exceptions must expand without treating RSVP status as assignment status. Invalid entries are reported while valid entries remain usable.
 
 This intent is covered by [[pkg/parser/parser_test.go#TestRecurrenceExceptionsAndAttendeeStatuses]], [[pkg/parser/parser_test.go#TestCancelledOccurrenceIsNotAssigned]], and [[pkg/parser/parser_test.go#TestInvalidEntriesAreReportedWithoutDiscardingValidOnes]].
+
+### Identifying invalid start dates
+
+Invalid start-date notices identify the event by title, UID and start value, including timestamps with and without a timezone and missing or malformed values.
+
+This is covered by [[pkg/parser/parser_test.go#TestInvalidStartIssueIdentifiesEvent]].
 
 ## Publication and mail safety
 
