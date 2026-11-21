@@ -8,6 +8,7 @@ import (
 	"oberfeld.be/hilfmal/pkg/models"
 )
 
+// @lat: [[tests#Tests#Daily application workflow#Swiss service date and ranges]]
 func TestServiceDate(t *testing.T) {
 	plannerUT := NewPlanner()
 
@@ -70,6 +71,7 @@ func TestServiceDateAtDaylightSavingTransitions(t *testing.T) {
 	}
 }
 
+// @lat: [[tests#Tests#Calendar and contact resolution#Priority and contact validity]]
 func TestSelect(t *testing.T) {
 	p := NewPlanner()
 

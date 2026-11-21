@@ -26,6 +26,7 @@ func newPublicPage() (string, func(), error) {
 	}, nil
 }
 
+// @lat: [[tests#Tests#DAV transport and integration]]
 func verifyInitialRun(paths davPaths, pagePath string, today, fixedTime time.Time) error {
 	if err := clearMailpitMessages(); err != nil {
 		return err

@@ -83,6 +83,7 @@ func (p *scenarioPublisher) Publish(contact *models.Contact) error {
 	return nil
 }
 
+// @lat: [[tests#Tests#Daily application workflow#Run publication and notice behavior]]
 func TestApplicationFeatures(t *testing.T) {
 	suite := godog.TestSuite{
 		Name:                "application",

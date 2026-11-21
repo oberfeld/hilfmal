@@ -8,6 +8,7 @@ import (
 	"testing"
 )
 
+// @lat: [[tests#Tests#Publication and mail safety#MIME and local submission]]
 func TestBuildMessageEncodesSubjectAndUsesUTF8(t *testing.T) {
 	message, recipient, sender, err := buildMessage(
 		"person@example.test",

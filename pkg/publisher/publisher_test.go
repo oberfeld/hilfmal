@@ -9,6 +9,7 @@ import (
 	"oberfeld.be/hilfmal/pkg/models"
 )
 
+// @lat: [[tests#Tests#Publication and mail safety#Escaped static page]]
 func TestPublishWritesEscapedStaticHTML(t *testing.T) {
 	directory := t.TempDir()
 	templatePath := filepath.Join(directory, "template.html")

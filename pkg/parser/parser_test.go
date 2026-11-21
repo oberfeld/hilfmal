@@ -7,6 +7,7 @@ import (
 	"time"
 )
 
+// @lat: [[tests#Tests#Calendar and contact resolution#Recurrence and all-day parsing]]
 func TestRecurrenceExceptionsAndAttendeeStatuses(t *testing.T) {
 	ical := "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//Test//EN\r\n" +
 		"BEGIN:VEVENT\r\nUID:recurring\r\nDTSTART;VALUE=DATE:20261101\r\nDTEND;VALUE=DATE:20261102\r\n" +
