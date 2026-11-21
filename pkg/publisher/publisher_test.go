@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"unicode/utf8"
 
 	"oberfeld.be/hilfmal/pkg/models"
 )
@@ -67,8 +68,62 @@ func TestPublishNilContactWritesUnavailableMessage(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(string(content), "nicht verfügbar") {
-		t.Fatalf("page missing unavailable message: %s", content)
+	if !utf8.Valid(content) {
+		t.Fatal("unavailable page is not valid UTF-8")
+	}
+	page := string(content)
+	for _, expected := range []string{
+		"<!doctype html>",
+		`<meta charset="utf-8">`,
+		"Eine verlässliche Dienstinformation ist zurzeit nicht verfügbar.",
+	} {
+		if !strings.Contains(page, expected) {
+			t.Errorf("unavailable page missing %q: %s", expected, page)
+		}
+	}
+}
+
+func TestWebTemplateShowsCallLinkOrUnavailableMessage(t *testing.T) {
+	template, err := os.ReadFile(filepath.Join("..", "..", "templates", "web.html"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	publisher := &FilePublisher{template: string(template)}
+
+	page := publisher.render(&models.Contact{Name: "Léa", Phone: "+41 79 123 45 67"})
+	for _, expected := range []string{
+		`<section  aria-label="Diensthabende Person">`,
+		`<section hidden aria-label="Keine Dienstinformation">`,
+		`href="tel:+41791234567"`,
+		"+41 79 123 45 67",
+		"Léa",
+	} {
+		if !strings.Contains(page, expected) {
+			t.Errorf("contact page missing %q", expected)
+		}
+	}
+
+	page = publisher.render(nil)
+	for _, expected := range []string{
+		`<section hidden aria-label="Diensthabende Person">`,
+		`<section  aria-label="Keine Dienstinformation">`,
+		`<meta charset="utf-8">`,
+		"Eine verlässliche Dienstinformation ist zurzeit nicht verfügbar.",
+	} {
+		if !strings.Contains(page, expected) {
+			t.Errorf("unavailable page missing %q", expected)
+		}
+	}
+}
+
+func TestCallLinkEscapesPhoneAndReplacesPlaceholdersOnce(t *testing.T) {
+	publisher := &FilePublisher{template: `<a href="{{phone_url}}">{{name}} {{phone}}</a>`}
+	page := publisher.render(&models.Contact{Name: `{{phone}}`, Phone: `tel:+41 79 "12"&3`})
+	if !strings.Contains(page, `href="tel:+4179%2212%22&amp;3"`) {
+		t.Errorf("phone URL was not safely escaped: %s", page)
+	}
+	if !strings.Contains(page, `>{{phone}} tel:+41 79 &#34;12&#34;&amp;3</a>`) {
+		t.Errorf("contact fields were not safely rendered: %s", page)
 	}
 }
 

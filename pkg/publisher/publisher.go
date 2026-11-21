@@ -3,6 +3,7 @@ package publisher
 import (
 	"fmt"
 	"html"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -67,9 +68,31 @@ func (p *FilePublisher) Publish(contact *models.Contact) error {
 }
 
 func (p *FilePublisher) render(contact *models.Contact) string {
-	if contact == nil {
-		return "<p>Eine verlässliche Dienstinformation ist zurzeit nicht verfügbar.</p>"
+	if contact == nil && (!strings.Contains(p.template, "{{contact_hidden}}") || !strings.Contains(p.template, "{{unavailable_hidden}}")) {
+		return `<!doctype html>
+<html lang="de">
+<head><meta charset="utf-8"></head>
+<body><p>Eine verlässliche Dienstinformation ist zurzeit nicht verfügbar.</p></body>
+</html>
+`
 	}
-	content := strings.ReplaceAll(p.template, "{{name}}", html.EscapeString(contact.Name))
-	return strings.ReplaceAll(content, "{{phone}}", html.EscapeString(contact.Phone))
+	name, phone, phoneURL := "", "", ""
+	contactHidden, unavailableHidden := "hidden", ""
+	if contact != nil {
+		name = html.EscapeString(contact.Name)
+		phone = html.EscapeString(contact.Phone)
+		number := strings.Join(strings.Fields(contact.Phone), "")
+		if strings.HasPrefix(strings.ToLower(number), "tel:") {
+			number = number[len("tel:"):]
+		}
+		phoneURL = html.EscapeString("tel:" + url.PathEscape(number))
+		contactHidden, unavailableHidden = "", "hidden"
+	}
+	return strings.NewReplacer(
+		"{{name}}", name,
+		"{{phone}}", phone,
+		"{{phone_url}}", phoneURL,
+		"{{contact_hidden}}", contactHidden,
+		"{{unavailable_hidden}}", unavailableHidden,
+	).Replace(p.template)
 }

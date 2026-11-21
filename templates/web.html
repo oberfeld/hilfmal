@@ -4,12 +4,104 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Hilfmal – Pikettdienst</title>
+    <style>
+        :root {
+            color-scheme: light;
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            color: #172f32;
+            background: #f3f5ef;
+        }
+        * { box-sizing: border-box; }
+        [hidden] { display: none !important; }
+        body {
+            min-height: 100vh;
+            min-height: 100svh;
+            margin: 0;
+            display: grid;
+            place-items: center;
+            padding: 1.5rem;
+            background: radial-gradient(circle at 15% 0%, #dcece0, transparent 40%),
+                        radial-gradient(circle at 100% 100%, #f6e8cd, transparent 40%), #f3f5ef;
+        }
+        main {
+            width: min(100%, 34rem);
+            overflow: hidden;
+            background: #fff;
+            border: 1px solid #dfe8df;
+            border-radius: 1.5rem;
+            box-shadow: 0 1.5rem 4rem #183e3020;
+        }
+        header {
+            padding: 2rem 2rem 1.75rem;
+            color: #fff;
+            background: #164c43;
+        }
+        .eyebrow {
+            margin: 0 0 .75rem;
+            color: #bde0cd;
+            font-size: .75rem;
+            font-weight: 700;
+            letter-spacing: .12em;
+            text-transform: uppercase;
+        }
+        h1 { margin: 0; font-size: clamp(2.4rem, 8vw, 3.5rem); line-height: 1; letter-spacing: -.04em; }
+        header p:last-child { margin: 1rem 0 0; color: #e0efe6; line-height: 1.5; }
+        .content { padding: 2rem; }
+        .label {
+            margin: 0 0 .5rem;
+            color: #4b6a61;
+            font-size: .8rem;
+            font-weight: 700;
+            letter-spacing: .08em;
+            text-transform: uppercase;
+        }
+        h2 { margin: 0 0 1.5rem; font-size: clamp(1.7rem, 6vw, 2.25rem); overflow-wrap: anywhere; }
+        .call {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+            gap: .5rem 1rem;
+            padding: 1rem 1.25rem;
+            border-radius: .75rem;
+            background: #16614e;
+            color: #fff;
+            font-weight: 700;
+            text-decoration: none;
+        }
+        .call:hover { background: #104c3d; }
+        .call:focus-visible { outline: 3px solid #b46a12; outline-offset: 3px; }
+        .number { font-weight: 500; overflow-wrap: anywhere; }
+        .hint { margin: 1rem 0 0; color: #4b625d; font-size: .9rem; line-height: 1.5; }
+        .unavailable { margin: 0; line-height: 1.6; }
+        @media (max-width: 380px) {
+            body { padding: 1rem; }
+            header, .content { padding: 1.5rem; }
+        }
+    </style>
 </head>
 <body>
     <main>
-        <h1>Hilfmal – Pikettdienst</h1>
-        <p>Diensthabend: {{name}}</p>
-        <p>Telefon: {{phone}}</p>
+        <header>
+            <p class="eyebrow">Gemeinschaftsräume WBGO</p>
+            <h1>Hilfmal</h1>
+            <p>Der Pikettdienst für Jugendunruhen in den Gemeinschaftsräumen.</p>
+        </header>
+        <div class="content">
+            <section {{contact_hidden}} aria-label="Diensthabende Person">
+                <p class="label">Im Dienst</p>
+                <h2>{{name}}</h2>
+                <a class="call" href="{{phone_url}}">
+                    <span>Jetzt anrufen &rarr;</span>
+                    <span class="number">{{phone}}</span>
+                </a>
+                <p class="hint">Tippe auf die Telefonnummer, um anzurufen.</p>
+            </section>
+            <section {{unavailable_hidden}} aria-label="Keine Dienstinformation">
+                <p class="label">Zurzeit nicht verfügbar</p>
+                <p class="unavailable">Eine verlässliche Dienstinformation ist zurzeit nicht verfügbar.</p>
+            </section>
+        </div>
     </main>
 </body>
 </html>

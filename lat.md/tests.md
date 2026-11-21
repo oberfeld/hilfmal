@@ -44,9 +44,9 @@ These tests ensure public output and messages contain only the intended data and
 
 ### Escaped static page
 
-The publisher must HTML-escape names and phone numbers and render an unavailable-service message instead of a false contact. A missing parent directory must prevent publication.
+The publisher escapes contact details, provides a telephone link and displays a UTF-8 unavailable message when no contact is available. A missing parent directory must prevent publication.
 
-This intent is covered by [[pkg/publisher/publisher_test.go#TestPublishWritesEscapedStaticHTML]] and [[pkg/publisher/publisher_test.go#TestPublishNilContactWritesUnavailableMessage]].
+This intent is covered by [[pkg/publisher/publisher_test.go#TestPublishWritesEscapedStaticHTML]], [[pkg/publisher/publisher_test.go#TestPublishNilContactWritesUnavailableMessage]], and [[pkg/publisher/publisher_test.go#TestWebTemplateShowsCallLinkOrUnavailableMessage]].
 
 ### MIME and local submission
 

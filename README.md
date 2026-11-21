@@ -41,7 +41,7 @@ Der Aufruf verwendet die Systemzeit und greift über HTTPS auf Nextcloud zu. Er 
 
 **Hinweis zur statischen Webseite:** Die HTML-Datei blendet Kontaktdaten nach einer festgelegten Zeit nicht automatisch aus. Wenn ein Lauf ausbleibt oder fehlschlägt, bleibt die zuletzt veröffentlichte Telefonnummer sichtbar, bis ein neuer erfolgreicher Lauf die Datei ersetzt.
 
-Texte und Gestaltung stehen in `templates/`; die Pfade und E-Mail-Betreffzeilen sind konfigurierbar. `gap_interval` verwendet ein positives Datumsintervall wie `P1M`; der Erinnerungsvorlauf wird in Tagen angegeben.
+Texte und Gestaltung stehen in `templates/`; die Pfade und E-Mail-Betreffzeilen sind konfigurierbar. Das Web-Template unterstützt `{{name}}`, `{{phone}}` und `{{phone_url}}` für den Anruflink. `{{contact_hidden}}` und `{{unavailable_hidden}}` blenden je nach Dienstinformation den entsprechenden Bereich aus. `gap_interval` verwendet ein positives Datumsintervall wie `P1M`; der Erinnerungsvorlauf wird in Tagen angegeben.
 
 ## Tests und Migration
 

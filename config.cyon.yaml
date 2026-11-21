@@ -34,7 +34,7 @@ emergency_email: "emanuel@inthemill.ch"
 # veröffentlichte Telefonnummer sichtbar, bis eine neue Seite publiziert wird.
 public_page: "/home/wohnenim/public_html/hilfmal/public/index.html"
 
-# Pfad zum HTML-Template mit den Platzhaltern {{name}} und {{phone}}.
+# Pfad zum HTML-Template mit den Platzhaltern für Name, Telefon und Anruflink.
 web_template: "/home/wohnenim/hilfmal/templates/web.html"
 
 # Pfad zum E-Mail-Template für Erinnerungen mit {{name}} und {{date}}.

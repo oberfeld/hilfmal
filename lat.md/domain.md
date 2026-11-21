@@ -11,7 +11,7 @@ Calendar entries are all-day iCalendar events with half-open date ranges. A mult
 ## Attendee and contact identity
 The calendar attendee email is the stable join key to Mitwirkende. It ignores RSVP status and requires a unique, complete contact.
 
-The public page is therefore a view of identity and reachability, not a general export of calendar or address-book data. Only name and phone are rendered; the implementation escapes both values in [[pkg/publisher/publisher.go#FilePublisher#render]].
+The public page is therefore a view of identity and reachability, not a general export of calendar or address-book data. Only name and phone are rendered, with a telephone link; [[pkg/publisher/publisher.go#FilePublisher#render]] escapes the values.
 
 ## Overlap priority
 
