@@ -48,6 +48,17 @@ Funktionalität: Kontaktzuordnung zu einem Dienst
       | Ein Teil eines längeren Wortes ist kein Name       | Johanna ist zuständig    |                        |                             |
       | Ohne vollständigen Kontakt gibt es einen Hinweis   | Pikettdienst             | unbekannt@example.test | unvollstaendig@example.test |
 
+  Szenario: Fehlende Kontaktdaten werden benannt
+    Angenommen das Adressbuch enthält
+      | Vorname | Nachname      | Telefon | E-Mails                     |
+      | Nick    | Unvollständig |         | unvollstaendig@example.test |
+    Und ein Dienst mit Titel "Nick Unvollständig ist zuständig", Organisator "" und Teilnehmenden ""
+    Wenn die zuständige Person ermittelt wird
+    Dann wird keine Person zugeordnet
+    Und es gibt einen Kontakt-Hinweis
+    Und der Kontakt-Hinweis enthält "Nick Unvollständig"
+    Und der Kontakt-Hinweis enthält "Telefonnummer"
+
   Szenario: Gleiche Vornamen ohne Nachname führen zur Auswahl nach E-Mail
     Angenommen ein Dienst mit Titel "Ada ist zuständig", Organisator "berta@example.test" und Teilnehmenden ""
     Wenn die zuständige Person ermittelt wird

@@ -472,6 +472,71 @@ func TestPriorityAndMissingCreationTieBreakAreInputOrderIndependent(t *testing.T
 	}
 }
 
+func TestUnresolvedContactIssuesIdentifyMissingFields(t *testing.T) {
+	p := NewPlanner()
+	noEmail, err := parser.ParseVCard("BEGIN:VCARD\nN:Beispiel;Ada;;;\nTEL:123\nEND:VCARD\n")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, tt := range []struct {
+		name     string
+		event    models.Event
+		contacts []models.Contact
+		want     []string
+	}{
+		{
+			name:     "title and missing phone",
+			event:    models.Event{UID: "karin", Start: "2026-11-22", End: "2026-11-23", Summary: "Karin ist zuständig"},
+			contacts: []models.Contact{{Name: "Karin", LastName: "Beispiel", Email: "karin@example.test"}},
+			want:     []string{`"Karin ist zuständig"`, "karin", "2026-11-22", `"Karin Beispiel"`, "Telefonnummer fehlt"},
+		},
+		{
+			name:     "missing email retained from vcard",
+			event:    models.Event{UID: "ada", Start: "2026-11-22", End: "2026-11-23", Summary: "Ada ist zuständig"},
+			contacts: noEmail,
+			want:     []string{`"Ada Beispiel"`, "E-Mail-Adresse fehlt"},
+		},
+		{
+			name:     "attendee identifies missing name and phone",
+			event:    models.Event{UID: "guest", Start: "2026-11-22", End: "2026-11-23", Attendees: []string{"guest@example.test"}},
+			contacts: []models.Contact{{LastName: "Beispiel", Email: "guest@example.test"}},
+			want:     []string{`"Beispiel"`, "guest@example.test", "Vorname fehlt", "Telefonnummer fehlt"},
+		},
+		{
+			name:     "invalid email and missing phone",
+			event:    models.Event{UID: "invalid", Start: "2026-11-22", End: "2026-11-23", Summary: "Ada"},
+			contacts: []models.Contact{{Name: "Ada", Email: "nicht-gueltig"}},
+			want:     []string{"Ada", "Telefonnummer fehlt", "keine gültige E-Mail-Adresse"},
+		},
+		{
+			name:  "unknown attendee",
+			event: models.Event{UID: "unknown", Start: "2026-11-22", End: "2026-11-23", Attendees: []string{"unknown@example.test"}},
+			want:  []string{"unknown@example.test", "Adressbuch prüfen"},
+		},
+		{
+			name:     "ambiguous complete contacts",
+			event:    models.Event{UID: "ambiguous", Start: "2026-11-22", End: "2026-11-23", Summary: "Ada und Berta"},
+			contacts: []models.Contact{{Name: "Ada", Phone: "123", Email: "ada@example.test"}, {Name: "Berta", Phone: "456", Email: "berta@example.test"}},
+			want:     []string{"Mehrere vollständige Kontakte", "Zuordnung präzisieren"},
+		},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			issues := p.Issues([]models.Event{tt.event}, tt.contacts)
+			if len(issues) != 1 {
+				t.Fatalf("Issues() = %v, want one issue", issues)
+			}
+			for _, text := range tt.want {
+				if !strings.Contains(issues[0], text) {
+					t.Errorf("issue %q does not contain %q", issues[0], text)
+				}
+			}
+			if selected := p.Select("2026-11-22", []models.Event{tt.event}, tt.contacts); selected != nil {
+				t.Errorf("Select() = %#v, want no assignment", selected)
+			}
+		})
+	}
+}
+
 func TestIssuesOnlyReportsEventsWithoutAValidContact(t *testing.T) {
 	p := NewPlanner()
 	events := []models.Event{

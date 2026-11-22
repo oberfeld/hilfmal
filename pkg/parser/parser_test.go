@@ -212,6 +212,14 @@ func TestParseVCardEscapedNameSeparator(t *testing.T) {
 	}
 }
 
+func TestParseVCardPreservesContactWithoutEmail(t *testing.T) {
+	vcard := "BEGIN:VCARD\nVERSION:3.0\nN:Beispiel;Ada;;;\nTEL:123\nEND:VCARD\n"
+	contacts, err := ParseVCard(vcard)
+	if err != nil || len(contacts) != 1 || contacts[0].Name != "Ada" || contacts[0].LastName != "Beispiel" || contacts[0].Phone != "123" || contacts[0].Email != "" {
+		t.Fatalf("ParseVCard() = %#v, %v", contacts, err)
+	}
+}
+
 func TestParseVCardRejectsMalformedDataAndPreservesInvalidEmailForValidation(t *testing.T) {
 	if _, err := ParseVCard("EMAIL:ada@example.test"); err == nil {
 		t.Fatal("expected missing VCARD wrapper to fail")

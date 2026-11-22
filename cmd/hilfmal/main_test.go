@@ -50,6 +50,7 @@ contacts_url: https://yaml.example.test/contacts
 admins_url: https://yaml.example.test/admins
 sender: yaml@example.test
 emergency_email: emergency@example.test
+sendmail_path: /opt/mail/sendmail
 public_page: /srv/public/index.html
 `
 	if err := os.WriteFile(path, []byte(yaml), 0600); err != nil {
@@ -77,6 +78,9 @@ public_page: /srv/public/index.html
 	}
 	if config.PublicPage != "/srv/public/index.html" {
 		t.Fatalf("PublicPage = %q, want YAML value", config.PublicPage)
+	}
+	if config.SendmailPath != "/opt/mail/sendmail" {
+		t.Fatalf("SendmailPath = %q, want YAML value", config.SendmailPath)
 	}
 }
 
@@ -146,14 +150,17 @@ func TestPublishOnlyStartupFailureDoesNotSendEmail(t *testing.T) {
 func TestNormalStartupFailureStillSendsEmail(t *testing.T) {
 	directory := t.TempDir()
 	marker := filepath.Join(directory, "mail-sent")
-	if err := os.WriteFile(filepath.Join(directory, "sendmail"), []byte("#!/bin/sh\nprintf sent > \"$MAIL_MARKER\"\n"), 0700); err != nil {
+	sendmailPath := filepath.Join(directory, "configured-sendmail")
+	if err := os.WriteFile(sendmailPath, []byte("#!/bin/sh\nprintf sent > \"$MAIL_MARKER\"\n"), 0700); err != nil {
 		t.Fatal(err)
 	}
-	t.Setenv("PATH", directory)
+	t.Setenv("PATH", t.TempDir())
 	t.Setenv("MAIL_MARKER", marker)
 	t.Setenv("HILFMAL_DAV_USER", "")
 	t.Setenv("HILFMAL_DAV_PASSWORD", "")
-	configYAML, err := yaml.Marshal(validTestConfig())
+	config := validTestConfig()
+	config.SendmailPath = sendmailPath
+	configYAML, err := yaml.Marshal(config)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -186,6 +193,12 @@ func TestValidateConfigRejectsNonHTTPSAndInvalidAddresses(t *testing.T) {
 	config.ReminderDays = -1
 	if err := validateConfig(config); err == nil {
 		t.Fatal("expected negative reminder_days to fail")
+	}
+
+	config = validTestConfig()
+	config.SendmailPath = "bin/sendmail"
+	if err := validateConfig(config); err == nil || !strings.Contains(err.Error(), "sendmail_path") {
+		t.Fatalf("validateConfig() error = %v, want absolute sendmail path error", err)
 	}
 }
 

@@ -38,14 +38,14 @@ Der tägliche Programmlauf liest und prüft den Dienstplan und die Adressbücher
 
 1. **Mitwirkende benachrichtigen:** Die eingeteilte Person wird einmal vor Beginn eines zusammenhängenden Dienstes an ihren bevorstehenden Dienst und an die Organisation einer Vertretung bei Verhinderung erinnert. Der Vorlauf beträgt standardmässig sieben Tage und ist konfigurierbar.
 2. **Lücken melden:** Die Administration erhält einen Hinweis auf Tage ohne eingeteilten Dienst. Eine lückenlose Abdeckung ist jeden Tag erforderlich. Geprüft wird standardmässig ein Monat in die Zukunft; dieser Zeitraum ist konfigurierbar.
-3. **Unvollständige Einträge melden:** Die Administration erhält einen Hinweis auf Dienstplaneinträge, die für die Verarbeitung erforderliche Angaben vermissen oder keine eindeutige Zuordnung zu einem Kontakt erlauben. Dazu gehören insbesondere fehlende Datumsangaben, eine fehlende oder mehrdeutige eingeladene Person sowie fehlende oder mehrdeutige Kontaktdaten.
+3. **Unvollständige Einträge melden:** Die Administration erhält einen Hinweis auf Dienstplaneinträge, die für die Verarbeitung erforderliche Angaben vermissen oder keine eindeutige Zuordnung zu einem Kontakt erlauben. Bei unvollständigen Kontakten nennt der Hinweis passende Kontakte und fehlende oder ungültige Pflichtfelder. Dazu gehören insbesondere fehlende Datumsangaben, eine fehlende oder mehrdeutige eingeladene Person sowie fehlende oder mehrdeutige Kontaktdaten.
 4. **Webseite bereitstellen:** Das Programm stellt die Webseite mit Vorname und Telefonnummer der aktuell diensthabenden Person bereit. Andere Angaben aus Kalender und Adressbuch werden nicht öffentlich angezeigt.
 
 Für E-Mails und Webseite stehen einfach anzupassende Templates bereit. Diese trennen die Gestaltung und Texte von der Programmlogik. Als Absenderadresse wird standardmässig `hilfmal@oberfeld.be` verwendet; sie ist konfigurierbar.
 
 ### E-Mail-Versand
 
-Hilfmal übergibt E-Mails an den lokalen sendmail-kompatiblen Mailversand des Servers, ohne eigene SMTP-Zugangsdaten im Programm. Die konfigurierte Absenderadresse wird für `From` und `Reply-To` verwendet. Texte werden als UTF-8 versendet; Betreff und Header müssen für den Mailversand korrekt kodiert werden.
+Hilfmal übergibt E-Mails an den lokalen sendmail-kompatiblen Mailversand des Servers, ohne eigene SMTP-Zugangsdaten im Programm. Der absolute Programmpfad ist konfigurierbar; fehlt er, wird `sendmail` im `PATH` gesucht. Die konfigurierte Absenderadresse wird für `From` und `Reply-To` verwendet. Texte werden als UTF-8 versendet; Betreff und Header müssen für den Mailversand korrekt kodiert werden.
 
 Der Rückgabewert des lokalen Mailversands wird geprüft. Ein Fehler beim Versand wird protokolliert und der Programmlauf als fehlgeschlagen ausgewiesen. Anders als bei Putzmal darf ein fehlgeschlagener Einzelversand nicht zu einem erfolgreichen Lauf führen. Ein erfolgreicher Rückgabewert bestätigt nur die Annahme durch den lokalen Mailversand, nicht die Zustellung an die Empfänger.
 

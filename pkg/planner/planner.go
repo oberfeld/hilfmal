@@ -235,13 +235,99 @@ func (p *Planner) Issues(events []models.Event, contacts []models.Contact) []str
 	for _, event := range events {
 		contact, ambiguous := p.resolve(&event, contacts)
 		if contact == nil {
-			issues = append(issues, "Dienst "+event.UID+" ("+event.Start+"): Kontakt fehlt oder ist nicht eindeutig.")
+			issues = append(issues, unresolvedContactIssue(event, contacts, ambiguous))
 		} else if ambiguous {
 			issues = append(issues, fmt.Sprintf("Dienst %s (%s): Mehrere Kontakte passen zum Titel; %s (Telefon: %s) wurde ausgewählt. Bitte Zuordnung prüfen.",
 				event.UID, event.Start, contact.Email, contact.Phone))
 		}
 	}
 	return issues
+}
+
+func unresolvedContactIssue(event models.Event, contacts []models.Contact, ambiguous bool) string {
+	title := event.Summary
+	if strings.TrimSpace(title) == "" {
+		title = "(ohne Titel)"
+	}
+	prefix := fmt.Sprintf("Dienst %q (UID: %s, Datum: %s): ", title, event.UID, event.Start)
+	if ambiguous {
+		return prefix + "Mehrere vollständige Kontakte passen zum Titel; bitte die Zuordnung präzisieren."
+	}
+
+	var candidates []string
+	for _, contact := range contacts {
+		matches := containsName(event.Summary, contact.Name)
+		for _, address := range append([]string{contact.Email}, contact.AdditionalEmails...) {
+			if address == "" {
+				continue
+			}
+			if strings.EqualFold(address, event.Organizer) {
+				matches = true
+			}
+			for _, attendee := range event.Attendees {
+				if strings.EqualFold(address, attendee) {
+					matches = true
+				}
+			}
+		}
+		if !matches {
+			continue
+		}
+
+		var missing []string
+		if strings.TrimSpace(contact.Name) == "" {
+			missing = append(missing, "Vorname fehlt")
+		}
+		if strings.TrimSpace(contact.Phone) == "" {
+			missing = append(missing, "Telefonnummer fehlt")
+		}
+		hasEmail := false
+		hasValidEmail := false
+		for _, address := range append([]string{contact.Email}, contact.AdditionalEmails...) {
+			hasEmail = hasEmail || strings.TrimSpace(address) != ""
+			hasValidEmail = hasValidEmail || isValidEmail(address)
+		}
+		if !hasValidEmail {
+			if hasEmail {
+				missing = append(missing, "keine gültige E-Mail-Adresse")
+			} else {
+				missing = append(missing, "E-Mail-Adresse fehlt")
+			}
+		}
+		if len(missing) == 0 {
+			continue
+		}
+
+		name := strings.TrimSpace(strings.TrimSpace(contact.Name) + " " + strings.TrimSpace(contact.LastName))
+		if name == "" {
+			name = "(ohne Namen)"
+		}
+		identifier := fmt.Sprintf("%q", name)
+		for _, address := range append([]string{contact.Email}, contact.AdditionalEmails...) {
+			if strings.TrimSpace(address) != "" {
+				identifier += fmt.Sprintf(" (%q)", address)
+				break
+			}
+		}
+		candidates = append(candidates, fmt.Sprintf("Kontakt %s: %s", identifier, strings.Join(missing, ", ")))
+	}
+	if len(candidates) > 0 {
+		sort.Strings(candidates)
+		return prefix + "Mögliche unvollständige Kontakte: " + strings.Join(candidates, "; ") + "."
+	}
+	var addresses []string
+	for _, attendee := range event.Attendees {
+		if strings.TrimSpace(attendee) != "" {
+			addresses = append(addresses, fmt.Sprintf("Einladung %q", attendee))
+		}
+	}
+	if strings.TrimSpace(event.Organizer) != "" {
+		addresses = append(addresses, fmt.Sprintf("Organisator %q", event.Organizer))
+	}
+	if len(addresses) > 0 {
+		return prefix + "Kein passender vollständiger Kontakt gefunden; " + strings.Join(addresses, ", ") + " und Adressbuch prüfen."
+	}
+	return prefix + "Kein passender vollständiger Kontakt gefunden; Titel und Adressbuch prüfen."
 }
 
 // Gaps returns days without a valid contact (from inclusive, to exclusive)

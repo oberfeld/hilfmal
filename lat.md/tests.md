@@ -48,7 +48,9 @@ This is specified by [[pkg/planner/features/kontaktzuordnung.feature]] and cover
 
 Calendar titles select complete contacts by first name, using family names to resolve ambiguity. Equal first names without a surname and identical full names select by email and produce a warning; other ambiguity remains unresolved.
 
-This is specified by [[pkg/planner/features/kontaktzuordnung.feature]] and covered by [[pkg/planner/contact_bdd_test.go#TestContactFeatures]], [[pkg/planner/planner_test.go#TestSummaryFallback]], [[pkg/parser/parser_test.go#TestOrganizerOnRecurringEvents]], [[pkg/parser/parser_test.go#TestParseVCardUsesGivenNameAndEmails]], [[pkg/application/application_test.go#TestPublishOnlyWithDAVAndFilePublisher]], and [[pkg/application/application_test.go#TestSameNamedContactsPublishAndNotifyAdmin]].
+Unresolved assignments identify matching incomplete contacts and their missing fields, including contacts without an email address.
+
+This is specified by [[pkg/planner/features/kontaktzuordnung.feature]] and covered by [[pkg/planner/contact_bdd_test.go#TestContactFeatures]], [[pkg/planner/planner_test.go#TestSummaryFallback]], [[pkg/planner/planner_test.go#TestUnresolvedContactIssuesIdentifyMissingFields]], [[pkg/parser/parser_test.go#TestOrganizerOnRecurringEvents]], [[pkg/parser/parser_test.go#TestParseVCardUsesGivenNameAndEmails]], [[pkg/parser/parser_test.go#TestParseVCardPreservesContactWithoutEmail]], [[pkg/application/application_test.go#TestPublishOnlyWithDAVAndFilePublisher]], and [[pkg/application/application_test.go#TestSameNamedContactsPublishAndNotifyAdmin]].
 
 ### Recurrence and all-day parsing
 

@@ -10,8 +10,8 @@ reminder_days: 7
 # Die Endgrenze ist exklusiv; dies ist kein Mindestabstand zwischen Diensten.
 gap_interval: "P1M"
 
-# Täglicher Programmlauf um 06:00 Uhr in der Zeitzone des Cyon-Servers.
-cron_schedule: "0 6 * * *"
+# Testlauf täglich um 09:30 Uhr; nach dem Test wieder auf 0 6 * * * setzen.
+cron_schedule: "30 9 * * *"
 
 # HTTPS-Adresse des Dienstplan-Kalenders (CalDAV).
 calendar_url: "https://chischte.oberfeld.be/remote.php/dav/calendars/Hilfmal/personal/"
@@ -24,6 +24,9 @@ admins_url: "https://chischte.oberfeld.be/remote.php/dav/addressbooks/users/Hilf
 
 # Absender- und Antwortadresse der vom Programm versendeten E-Mails.
 sender: "hilfmal@oberfeld.be"
+
+# Absoluter Pfad zum lokalen sendmail-kompatiblen Programm.
+sendmail_path: "/usr/sbin/sendmail"
 
 # Zusätzliche Empfängeradresse für Fehler, insbesondere wenn das
 # Administrationsadressbuch nicht gelesen werden kann.

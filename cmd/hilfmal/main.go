@@ -6,6 +6,7 @@ import (
 	"net/mail"
 	"net/url"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -37,9 +38,14 @@ func runCLI(args []string) int {
 		log.Printf("Hilfmal: Startup failed: %v", err)
 		return 1
 	}
+	mail := mailer.NewSystemMailer(config.SendmailPath)
 	notifyStartupError := func() {
 		if !publishOnly {
-			notifyError(config.Sender, config.EmergencyEmail, "Fehler beim Hilfmal-Programmstart")
+			if config.SendmailPath != "" && !filepath.IsAbs(config.SendmailPath) {
+				log.Printf("Hilfmal: Startup error notification skipped: sendmail_path must be absolute")
+				return
+			}
+			notifyError(mail, config.Sender, config.EmergencyEmail, "Fehler beim Hilfmal-Programmstart")
 		}
 	}
 
@@ -68,9 +74,6 @@ func runCLI(args []string) int {
 	// Set up data source
 	transport := datasource.NewHTTPDAVTransport(config.DAVUser, config.DAVPassword)
 	source := datasource.NewNextcloudSource(transport, config.CalendarURL, config.ContactsURL, config.AdminsURL)
-
-	// Set up mailer
-	mail := mailer.NewSystemMailer("sendmail")
 
 	// Set up publisher
 	pub, err := publisher.NewFilePublisher(config.PublicPage, config.WebTemplate)
@@ -179,6 +182,9 @@ func validateConfig(config *models.Config) error {
 	if config.ReminderDays < 0 {
 		return fmt.Errorf("configuration missing or invalid: reminder_days")
 	}
+	if config.SendmailPath != "" && !filepath.IsAbs(config.SendmailPath) {
+		return fmt.Errorf("sendmail_path must be an absolute path")
+	}
 	for _, address := range []string{config.Sender, config.EmergencyEmail} {
 		parsed, err := mail.ParseAddress(address)
 		if err != nil || parsed.Address != address || address != strings.TrimSpace(address) {
@@ -195,12 +201,11 @@ func validateConfig(config *models.Config) error {
 	return nil
 }
 
-func notifyError(sender, recipient, subject string) {
+func notifyError(mail mailer.Mailer, sender, recipient, subject string) {
 	if sender == "" || recipient == "" {
 		return
 	}
 
-	mail := mailer.NewSystemMailer("sendmail")
 	if sendErr := mail.Send(recipient, sender, subject, "Der Hilfmal-Programmlauf konnte nicht gestartet werden. Bitte das Serverprotokoll und die Konfiguration prüfen."); sendErr != nil {
 		log.Printf("Hilfmal: Startup error notification failed: %v", sendErr)
 	}

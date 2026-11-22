@@ -61,10 +61,16 @@ func verifyContactRefresh(paths davPaths, pagePath string, fixedTime time.Time) 
 }
 
 func verifyProductionEntryPoint(paths davPaths, pagePath string) error {
+	if err := clearMailpitMessages(); err != nil {
+		return err
+	}
 	if err := runCLI(pagePath, paths.calendar, paths.contacts, paths.admins); err != nil {
 		return err
 	}
-	return verifyPublicPage(pagePath, []string{"999"}, nil)
+	if err := verifyPublicPage(pagePath, []string{"999"}, nil); err != nil {
+		return err
+	}
+	return verifyMailpitMessage("admin@example.test", "Kein gültiger Dienst")
 }
 
 func verifyFailureNotifications(paths davPaths, pagePath string, fixedTime time.Time) error {
@@ -166,6 +172,7 @@ func runCLI(pagePath, calendarPath, contactsPath, adminsPath string) error {
 		AdminsURL:        cloudURL + adminsPath,
 		Sender:           sender,
 		EmergencyEmail:   "notfall@example.test",
+		SendmailPath:     "/usr/local/bin/sendmail",
 		ReminderDays:     7,
 		GapInterval:      "P1M",
 		PublicPage:       pagePath,
@@ -192,6 +199,7 @@ func runCLI(pagePath, calendarPath, contactsPath, adminsPath string) error {
 		return err
 	}
 	command := exec.Command("/app/hilfmal", configFile.Name())
+	command.Env = append(os.Environ(), "PATH=/usr/bin:/bin")
 	output, err := command.CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("production entry point failed: %w: %s", err, output)

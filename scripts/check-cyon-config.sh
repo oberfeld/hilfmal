@@ -24,9 +24,14 @@ read_value() {
 }
 
 if [ "$mode" = check ]; then
-  for key in calendar_url contacts_url admins_url sender emergency_email; do
+  for key in calendar_url contacts_url admins_url sender emergency_email sendmail_path; do
     read_value "$key" > /dev/null
   done
+  sendmail_path="$(read_value sendmail_path)"
+  if [[ "$sendmail_path" != /* ]]; then
+    echo "sendmail_path in $config_file muss ein absoluter Pfad sein." >&2
+    exit 1
+  fi
 elif [ "$mode" != --cron ]; then
   echo "Unbekannter Modus: $mode" >&2
   exit 1

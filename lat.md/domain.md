@@ -34,4 +34,6 @@ If a duration group has a missing CREATED value, creation time is skipped for th
 
 The application combines source issues, planner issues and uncovered days before emailing the administration. This behavior is coordinated by [[pkg/application/application.go#Application#collectIssues]].
 
+For an unresolved contact, [[pkg/planner/planner.go#Planner#Issues]] identifies the duty and reports matching incomplete contacts and their missing or invalid required fields. Contacts without email are retained for diagnosis but remain ineligible for assignment.
+
 An invalid or missing start date is reported with the event title, UID and available start value so the entry can be found; a timestamp retains its stated timezone.

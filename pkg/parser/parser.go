@@ -520,12 +520,12 @@ func ParseVCard(vcard string) ([]models.Contact, error) {
 			emails = append(emails, withoutMailto(strings.TrimSpace(prop.value)))
 		}
 	}
-	if len(emails) == 0 {
-		return nil, nil
+	contact := models.Contact{Name: firstName, LastName: lastName, Phone: phone}
+	if len(emails) > 0 {
+		contact.Email = emails[0]
+		contact.AdditionalEmails = emails[1:]
 	}
-	return []models.Contact{{
-		Name: firstName, LastName: lastName, Phone: phone, Email: emails[0], AdditionalEmails: emails[1:],
-	}}, nil
+	return []models.Contact{contact}, nil
 }
 
 func splitVCardName(value string) []string {

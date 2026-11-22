@@ -37,7 +37,7 @@ make build
 ./bin/hilfmal config.local.yaml
 ```
 
-Der Aufruf verwendet die Systemzeit und greift über HTTPS auf Nextcloud zu. Er versendet E-Mails über den lokalen `sendmail`-Befehl und veröffentlicht eine HTML-Datei. Deshalb nur isolierte Testkonten, Testempfänger und ein separates Ausgabeverzeichnis verwenden.
+Der Aufruf verwendet die Systemzeit und greift über HTTPS auf Nextcloud zu. Er versendet E-Mails über den unter `sendmail_path` konfigurierten absoluten Pfad und veröffentlicht eine HTML-Datei. Ohne diese Einstellung wird aus Kompatibilitätsgründen `sendmail` im `PATH` gesucht. Deshalb nur isolierte Testkonten, Testempfänger und ein separates Ausgabeverzeichnis verwenden.
 
 **Hinweis zur statischen Webseite:** Die HTML-Datei blendet Kontaktdaten nach einer festgelegten Zeit nicht automatisch aus. Wenn ein Lauf ausbleibt oder fehlschlägt, bleibt die zuletzt veröffentlichte Telefonnummer sichtbar, bis ein neuer erfolgreicher Lauf die Datei ersetzt.
 
@@ -69,7 +69,7 @@ Die GitHub Action führt `make verify` aus. Der davon getrennte Integrationstest
 
 ### Cyon-Deployment
 
-Pushes auf `main` deployen das statisch gelinkte Linux-Binary (ohne glibc-Abhängigkeit), die Templates und `config.cyon.yaml` nach `/home/wohnenim/hilfmal`. Anschliessend aktualisiert `hilfmal --publish-only config.yaml` die Webseite, ohne Erinnerungen, Administrationshinweise oder Fehler-E-Mails zu versenden. Der Modus verwendet dieselbe Konfiguration und dieselben Templates wie der vollständige Lauf. Fehler werden protokolliert und lassen das Deployment fehlschlagen. Die erzeugte Webseite liegt unter `/home/wohnenim/public_html/hilfmal/public/index.html`. Die Action setzt den Cyon-Cronjob anhand von `cron_schedule` in `config.cyon.yaml` auf täglich um 06:00 Uhr (Zeitzone des Cyon-Servers); dieser führt weiterhin den vollständigen Programmlauf aus.
+Pushes auf `main` deployen das statisch gelinkte Linux-Binary (ohne glibc-Abhängigkeit), die Templates und `config.cyon.yaml` nach `/home/wohnenim/hilfmal`. Anschliessend aktualisiert `hilfmal --publish-only config.yaml` die Webseite, ohne Erinnerungen, Administrationshinweise oder Fehler-E-Mails zu versenden. Der Modus verwendet dieselbe Konfiguration und dieselben Templates wie der vollständige Lauf. Fehler werden protokolliert und lassen das Deployment fehlschlagen. Die erzeugte Webseite liegt unter `/home/wohnenim/public_html/hilfmal/public/index.html`. Die Action setzt den Cyon-Cronjob anhand von `cron_schedule` in `config.cyon.yaml`; dieser führt den vollständigen Programmlauf in der Zeitzone des Cyon-Servers aus. Für den Test ist vorübergehend täglich 09:30 eingestellt; danach `cron_schedule` wieder auf `0 6 * * *` setzen und deployen.
 
 Unter **Settings → Secrets and variables → Actions** müssen eingerichtet sein:
 
@@ -78,4 +78,4 @@ Unter **Settings → Secrets and variables → Actions** müssen eingerichtet se
 - Variable `CYON_KNOWN_HOSTS`: die verifizierte Known-Hosts-Zeile für exakt `oberfeld.be` (die `HostName`-Angabe in der Action), damit die Action den Server authentifiziert. Bei `ssh-keyscan -H` nur die Zeile ab `|1|...` übernehmen; Kommentarzeilen mit `#` sind optional.
 
 Kalender-/Adressbuch-URLs sowie Absender- und Notfall-E-Mail-Adresse müssen in `config.cyon.yaml` eingetragen werden. Die Pfade und übrigen festen Einstellungen für Cyon stehen ebenfalls dort.
-Für die Prüfung mit `make config-check` müssen `calendar_url`, `contacts_url`, `admins_url`, `sender`, `emergency_email` und `cron_schedule` jeweils genau einmal ohne Einrückung als nichtleerer, doppelt zitierter Wert in einer Zeile stehen. Der Cron-Ausdruck besteht aus fünf numerischen Feldern mit den Zeichen `*`, `,`, `-` und `/`.
+Für die Prüfung mit `make config-check` müssen `calendar_url`, `contacts_url`, `admins_url`, `sender`, `emergency_email`, `sendmail_path` und `cron_schedule` jeweils genau einmal ohne Einrückung als nichtleerer, doppelt zitierter Wert in einer Zeile stehen. `sendmail_path` muss absolut sein. Der Cron-Ausdruck besteht aus fünf numerischen Feldern mit den Zeichen `*`, `,`, `-` und `/`.

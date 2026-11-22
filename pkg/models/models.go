@@ -29,6 +29,7 @@ type Config struct {
 	AdminsURL        string `yaml:"admins_url"`
 	Sender           string `yaml:"sender"`
 	EmergencyEmail   string `yaml:"emergency_email"`
+	SendmailPath     string `yaml:"sendmail_path"`
 	ReminderDays     int    `yaml:"reminder_days"`
 	GapInterval      string `yaml:"gap_interval"`
 	PublicPage       string `yaml:"public_page"`

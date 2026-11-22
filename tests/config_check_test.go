@@ -14,6 +14,7 @@ contacts_url: "https://example.test/contacts"
 admins_url: "https://example.test/admins"
 sender: "sender@example.test"
 emergency_email: "admin@example.test"
+sendmail_path: "/usr/sbin/sendmail"
 cron_schedule: "0 6 * * *"
 `
 	tests := []struct {
@@ -28,6 +29,8 @@ cron_schedule: "0 6 * * *"
 		{name: "missing field", config: strings.Replace(valid, "sender: \"sender@example.test\"\n", "", 1), wantErr: "sender"},
 		{name: "empty field", config: strings.Replace(valid, `"sender@example.test"`, `""`, 1), wantErr: "sender"},
 		{name: "duplicate field", config: valid + "sender: \"other@example.test\"\n", wantErr: "sender"},
+		{name: "missing sendmail path", config: strings.Replace(valid, "sendmail_path: \"/usr/sbin/sendmail\"\n", "", 1), wantErr: "sendmail_path"},
+		{name: "relative sendmail path", config: strings.Replace(valid, "/usr/sbin/sendmail", "sendmail", 1), wantErr: "sendmail_path"},
 		{name: "invalid cron", config: strings.Replace(valid, "0 6 * * *", "0 6 * * *; id", 1), mode: "--cron", wantErr: "cron_schedule"},
 		{name: "missing cron", config: strings.Replace(valid, "cron_schedule: \"0 6 * * *\"\n", "", 1), mode: "--cron", wantErr: "cron_schedule"},
 	}
