@@ -4,13 +4,13 @@ import (
 	"errors"
 	"fmt"
 	"log"
-	"net/mail"
 	"regexp"
 	"strconv"
 	"strings"
 	"time"
 	_ "time/tzdata"
 
+	contactcheck "oberfeld.be/hilfmal/pkg/contacts"
 	"oberfeld.be/hilfmal/pkg/datasource"
 	"oberfeld.be/hilfmal/pkg/mailer"
 	"oberfeld.be/hilfmal/pkg/models"
@@ -48,10 +48,10 @@ func NewApplication(
 	gapInterval string,
 ) (*Application, error) {
 	// Validate email addresses
-	if !validEmail(sender) {
+	if !contactcheck.ValidEmail(sender) {
 		return nil, fmt.Errorf("invalid sender email address")
 	}
-	if !validEmail(emergency) {
+	if !contactcheck.ValidEmail(emergency) {
 		return nil, fmt.Errorf("invalid emergency email address")
 	}
 
@@ -117,6 +117,7 @@ func (a *Application) PublishOnly(now time.Time) error {
 		return fmt.Errorf("Mitwirkende lesen: %w", err)
 	}
 	issues := append(append([]string(nil), a.source.Issues()...), p.Issues(events, contacts)...)
+	issues = append(issues, (contactcheck.Contacts{}).Issues(contacts)...)
 	for _, issue := range issues {
 		log.Printf("Hilfmal: Hinweis bei Veröffentlichung: %s", issue)
 	}
@@ -204,7 +205,7 @@ func (a *Application) loadAdmins() ([]string, error) {
 	}
 
 	for _, email := range admins {
-		if !validEmail(email) {
+		if !contactcheck.ValidEmail(email) {
 			return nil, fmt.Errorf("Administrationsadressbuch enthält ungültige Empfänger.")
 		}
 	}
@@ -293,6 +294,7 @@ func (a *Application) collectIssues(today, gapEnd time.Time, p *planner.Planner,
 	var issues []string
 	issues = append(issues, sourceIssues...)
 	issues = append(issues, plannerIssues...)
+	issues = append(issues, (contactcheck.Contacts{}).Issues(contacts)...)
 
 	for _, gap := range gaps {
 		issues = append(issues, fmt.Sprintf("Kein gültiger Dienst: %s", gap))
@@ -324,14 +326,6 @@ func (a *Application) reportFailure(err error, stage string, admins []string) {
 			log.Printf("Hilfmal: Failed to send error notification: %v", err)
 		}
 	}
-}
-
-func validEmail(email string) bool {
-	if strings.TrimSpace(email) != email || strings.ContainsAny(email, "\r\n") {
-		return false
-	}
-	address, err := mail.ParseAddress(email)
-	return err == nil && address.Address == email
 }
 
 func isValidDateInterval(interval string) bool {

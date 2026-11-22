@@ -8,7 +8,7 @@ Diese Anleitung beschreibt den vorgesehenen Ablauf. Das Programm ist noch nicht 
 
 Hilfmal unterstützt Jugendliche und Anwohnende bei Situationen in den Gemeinschaftsräumen. Die Mitwirkung ist freiwillig. Die Koordination verwaltet den Dienstplan und die Kontaktdaten.
 
-Ein Dienst dauert von 06:00 Uhr bis 06:00 Uhr am nächsten Tag. Die Webseite zeigt den Vornamen und die Telefonnummer der eingeteilten Person; über den Anruflink kann die Nummer direkt gewählt werden. Sie wird normalerweise täglich um 06:00 Uhr aktualisiert; während des aktuellen Tests ist 09:30 Uhr eingestellt. Änderungen am Dienstplan erscheinen erst nach dem nächsten erfolgreichen Lauf. Eine Erinnerung per E-Mail weist standardmässig eine Woche im Voraus auf den bevorstehenden Dienst hin; dieser Vorlauf kann angepasst werden.
+Ein Dienst dauert von 06:00 Uhr bis 06:00 Uhr am nächsten Tag. Die Webseite zeigt den Vornamen und die Telefonnummer der eingeteilten Person; über den Anruflink kann die Nummer direkt gewählt werden. Sie wird einmal täglich um 06:00 Uhr aktualisiert. Änderungen am Dienstplan erscheinen erst nach dem nächsten erfolgreichen Lauf. Eine Erinnerung per E-Mail weist standardmässig eine Woche im Voraus auf den bevorstehenden Dienst hin; dieser Vorlauf kann angepasst werden.
 
 Bei Verhinderung organisiert die eingeteilte Person eine Vertretung, zum Beispiel über eine WhatsApp- oder Nextcloud-Talk-Gruppe, und informiert die Administration, damit diese den Dienstplan anpasst. Da die Webseite nur einmal täglich aktualisiert wird, müssen kurzfristige Änderungen auch ausserhalb der Webseite kommuniziert werden.
 
@@ -42,6 +42,8 @@ Für den Zugriff des Programms wird zusätzlich ein eigenes App-Passwort erzeugt
 2. Kopiere bei Bedarf einen bestehenden Kontakt aus dem Adressbuch «Konten» in «Mitwirkende» und ergänze fehlende Angaben.
 3. Teile das Adressbuch mit den zuständigen Admin-Personen mit Schreibrecht. Eine Freigabe mit Leserecht für alle Mitwirkenden ist optional.
 4. Halte die Angaben aktuell und entferne den Kontakt beim Austritt der Person.
+
+Bei jedem vollständigen Programmlauf erhält die Administration Hinweise auf fehlende Vornamen, Nachnamen, Telefonnummern und E-Mail-Adressen aller Mitwirkenden, auch ohne eingetragenen Dienst. Ungültige E-Mail-Adressen werden nicht eigens gemeldet.
 
 ### Administrationsadressen verwalten
 

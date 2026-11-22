@@ -506,7 +506,7 @@ func TestUnresolvedContactIssuesIdentifyMissingFields(t *testing.T) {
 			name:     "invalid email and missing phone",
 			event:    models.Event{UID: "invalid", Start: "2026-11-22", End: "2026-11-23", Summary: "Ada"},
 			contacts: []models.Contact{{Name: "Ada", Email: "nicht-gueltig"}},
-			want:     []string{"Ada", "Telefonnummer fehlt", "keine gültige E-Mail-Adresse"},
+			want:     []string{"Ada", "Telefonnummer fehlt"},
 		},
 		{
 			name:  "unknown attendee",
@@ -534,6 +534,23 @@ func TestUnresolvedContactIssuesIdentifyMissingFields(t *testing.T) {
 				t.Errorf("Select() = %#v, want no assignment", selected)
 			}
 		})
+	}
+}
+
+func TestSelectContactWithMissingSurname(t *testing.T) {
+	contacts := []models.Contact{{Name: "Clara", Phone: "789", Email: "clara@example.test"}}
+	event := models.Event{UID: "duty", Start: "2026-11-22", End: "2026-11-23", Summary: "Clara"}
+	if selected := NewPlanner().Select("2026-11-22", []models.Event{event}, contacts); selected == nil || selected.Name != "Clara" {
+		t.Fatalf("Select() = %#v, want Clara despite missing surname", selected)
+	}
+}
+
+func TestUnresolvedDutyDoesNotReportInvalidEmailAddress(t *testing.T) {
+	event := models.Event{UID: "duty", Start: "2026-11-22", End: "2026-11-23", Summary: "Ada"}
+	contacts := []models.Contact{{Name: "Ada", LastName: "Test", Phone: "123", Email: "bad-address"}}
+	issues := NewPlanner().Issues([]models.Event{event}, contacts)
+	if len(issues) != 1 || strings.Contains(issues[0], "bad-address") || strings.Contains(issues[0], "E-Mail") {
+		t.Fatalf("Issues() = %v, want an unresolved duty without invalid email details", issues)
 	}
 }
 

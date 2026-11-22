@@ -35,6 +35,22 @@ Funktionalität: Täglicher Programmlauf
     Und die Webseite zeigt "Aktuell"
     Und es wurden keine E-Mails versendet
 
+  Szenario: Fehlende Kontaktdaten werden auch ohne eingetragenen Dienst gemeldet
+    Angenommen die Anwendung läuft am "2026-11-01T06:00:00+01:00" mit 7 Erinnerungstagen und Intervall "P1M"
+    Und Administratoren sind "admin@example.test"
+    Und Mitwirkende sind
+      | Name    | Telefon | E-Mail               |
+      | Aktuell | 123     | current@example.test |
+      | Berta   |         | berta@example.test   |
+    Und der Kalender enthält die Dienste
+      | UID       | Von        | Bis        | E-Mail               |
+      | abdeckung | 2026-11-01 | 2026-12-02 | current@example.test |
+    Wenn die Anwendung ausgeführt wird
+    Dann endet der Lauf mit Status 0
+    Und die Webseite zeigt "Aktuell"
+    Und es wurde eine E-mail an "admin@example.test" versendet welche im Body "Berta Test" enthält
+    Und es wurde eine E-mail an "admin@example.test" versendet welche im Body "Telefonnummer fehlt" enthält
+
   Szenario: Bei einem Fehler beim Lesen der Administratoren wird trotzdem veröffentlicht
     Angenommen die Anwendung läuft am "2026-11-01T06:00:00+01:00" mit 7 Erinnerungstagen und Intervall "P1M"
     Und Administratoren können nicht gelesen werden

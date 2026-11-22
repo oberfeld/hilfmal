@@ -2,13 +2,13 @@ package planner
 
 import (
 	"fmt"
-	"net/mail"
 	"sort"
 	"strings"
 	"time"
 	_ "time/tzdata"
 	"unicode"
 
+	contactcheck "oberfeld.be/hilfmal/pkg/contacts"
 	"oberfeld.be/hilfmal/pkg/models"
 )
 
@@ -119,7 +119,7 @@ func resolveContact(email string, contacts []models.Contact) (*models.Contact, i
 			continue
 		}
 		for _, address := range append([]string{contact.Email}, contact.AdditionalEmails...) {
-			if strings.EqualFold(address, email) && isValidEmail(address) {
+			if strings.EqualFold(address, email) && contactcheck.ValidEmail(address) {
 				contact.Email = address
 				return &contact, i
 			}
@@ -136,7 +136,7 @@ func resolveSummary(summary string, contacts []models.Contact) (*models.Contact,
 			continue
 		}
 		for _, address := range append([]string{contact.Email}, contact.AdditionalEmails...) {
-			if isValidEmail(address) {
+			if contactcheck.ValidEmail(address) {
 				contact.Email = address
 				candidates = append(candidates, contact)
 				break
@@ -274,42 +274,9 @@ func unresolvedContactIssue(event models.Event, contacts []models.Contact, ambig
 			continue
 		}
 
-		var missing []string
-		if strings.TrimSpace(contact.Name) == "" {
-			missing = append(missing, "Vorname fehlt")
+		if issue := (contactcheck.Contacts{}).Issue(contact); issue != "" {
+			candidates = append(candidates, issue)
 		}
-		if strings.TrimSpace(contact.Phone) == "" {
-			missing = append(missing, "Telefonnummer fehlt")
-		}
-		hasEmail := false
-		hasValidEmail := false
-		for _, address := range append([]string{contact.Email}, contact.AdditionalEmails...) {
-			hasEmail = hasEmail || strings.TrimSpace(address) != ""
-			hasValidEmail = hasValidEmail || isValidEmail(address)
-		}
-		if !hasValidEmail {
-			if hasEmail {
-				missing = append(missing, "keine gültige E-Mail-Adresse")
-			} else {
-				missing = append(missing, "E-Mail-Adresse fehlt")
-			}
-		}
-		if len(missing) == 0 {
-			continue
-		}
-
-		name := strings.TrimSpace(strings.TrimSpace(contact.Name) + " " + strings.TrimSpace(contact.LastName))
-		if name == "" {
-			name = "(ohne Namen)"
-		}
-		identifier := fmt.Sprintf("%q", name)
-		for _, address := range append([]string{contact.Email}, contact.AdditionalEmails...) {
-			if strings.TrimSpace(address) != "" {
-				identifier += fmt.Sprintf(" (%q)", address)
-				break
-			}
-		}
-		candidates = append(candidates, fmt.Sprintf("Kontakt %s: %s", identifier, strings.Join(missing, ", ")))
 	}
 	if len(candidates) > 0 {
 		sort.Strings(candidates)
@@ -317,11 +284,11 @@ func unresolvedContactIssue(event models.Event, contacts []models.Contact, ambig
 	}
 	var addresses []string
 	for _, attendee := range event.Attendees {
-		if strings.TrimSpace(attendee) != "" {
+		if contactcheck.ValidEmail(attendee) {
 			addresses = append(addresses, fmt.Sprintf("Einladung %q", attendee))
 		}
 	}
-	if strings.TrimSpace(event.Organizer) != "" {
+	if contactcheck.ValidEmail(event.Organizer) {
 		addresses = append(addresses, fmt.Sprintf("Organisator %q", event.Organizer))
 	}
 	if len(addresses) > 0 {
@@ -363,13 +330,4 @@ func (p *Planner) Reminder(date string, events []models.Event, contacts []models
 	}
 
 	return nil
-}
-
-// isValidEmail checks if email format is valid
-func isValidEmail(email string) bool {
-	if strings.TrimSpace(email) != email || strings.ContainsAny(email, "\r\n") {
-		return false
-	}
-	address, err := mail.ParseAddress(email)
-	return err == nil && address.Address == email
 }

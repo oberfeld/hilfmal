@@ -171,9 +171,10 @@ func setContacts(ctx context.Context, table *godog.Table) error {
 	}
 	for _, row := range table.Rows[1:] {
 		scenario.source.contacts = append(scenario.source.contacts, models.Contact{
-			Name:  row.Cells[0].Value,
-			Phone: row.Cells[1].Value,
-			Email: row.Cells[2].Value,
+			Name:     row.Cells[0].Value,
+			LastName: "Test",
+			Phone:    row.Cells[1].Value,
+			Email:    row.Cells[2].Value,
 		})
 	}
 	return nil

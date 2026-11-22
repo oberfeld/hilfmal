@@ -186,6 +186,27 @@ func TestPublishOnly(t *testing.T) {
 	}
 }
 
+func TestPublishOnlyLogsIncompleteContactsWithoutSendingMail(t *testing.T) {
+	source := successfulSource()
+	source.contacts = append(source.contacts, models.Contact{Name: "Berta", LastName: "Test", Email: "berta@example.test"})
+	mail := &fakeMailer{}
+	app := newTestApplication(t, source, mail, &fakePublisher{}, 7, "P1M")
+	var output bytes.Buffer
+	originalOutput := log.Writer()
+	log.SetOutput(&output)
+	defer log.SetOutput(originalOutput)
+
+	if err := app.PublishOnly(time.Date(2026, 11, 1, 6, 0, 0, 0, zurich(t))); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(output.String(), "Berta Test") || !strings.Contains(output.String(), "Telefonnummer fehlt") {
+		t.Fatalf("publication log = %q, want contact warning", output.String())
+	}
+	if len(mail.sent) != 0 {
+		t.Fatalf("publication-only mode sent %d emails", len(mail.sent))
+	}
+}
+
 func TestPublishOnlyWithDAVAndFilePublisher(t *testing.T) {
 	for _, tt := range []struct {
 		name           string
@@ -390,7 +411,7 @@ func newTestApplication(t *testing.T, source *fakeSource, mailer *fakeMailer, pu
 func successfulSource() *fakeSource {
 	return &fakeSource{
 		admins:   []string{"admin@example.test"},
-		contacts: []models.Contact{{Name: "Aktuell", Phone: "123", Email: "current@example.test"}, {Name: "Person", Phone: "456", Email: "person@example.test"}},
+		contacts: []models.Contact{{Name: "Aktuell", LastName: "Test", Phone: "123", Email: "current@example.test"}, {Name: "Person", LastName: "Test", Phone: "456", Email: "person@example.test"}},
 		events: []models.Event{
 			{UID: "today", Start: "2026-11-01", End: "2026-11-02", Attendees: []string{"current@example.test"}},
 			{UID: "reminder", Start: "2026-11-08", End: "2026-11-09", Attendees: []string{"person@example.test"}},

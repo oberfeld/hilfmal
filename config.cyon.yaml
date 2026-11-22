@@ -10,8 +10,8 @@ reminder_days: 7
 # Die Endgrenze ist exklusiv; dies ist kein Mindestabstand zwischen Diensten.
 gap_interval: "P1M"
 
-# Testlauf täglich um 09:30 Uhr; nach dem Test wieder auf 0 6 * * * setzen.
-cron_schedule: "30 9 * * *"
+# Täglicher Programmlauf um 06:00 Uhr in der Zeitzone des Cyon-Servers.
+cron_schedule: "0 6 * * *"
 
 # HTTPS-Adresse des Dienstplan-Kalenders (CalDAV).
 calendar_url: "https://chischte.oberfeld.be/remote.php/dav/calendars/Hilfmal/personal/"

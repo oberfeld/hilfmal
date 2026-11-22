@@ -15,6 +15,8 @@ type Event struct {
 type Contact struct {
 	Name             string   // First name
 	LastName         string   // Family name
+	DisplayName      string   // Formatted name from the address book
+	UID              string   // Address book contact identifier
 	Phone            string   // Phone number
 	Email            string   // First email address
 	AdditionalEmails []string // Other email addresses for the same person

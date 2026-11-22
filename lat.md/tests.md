@@ -12,15 +12,15 @@ Application scenarios exercise the orchestration and expected exit behavior with
 
 ### Run publication and notice behavior
 
-The complete run scenario must publish the selected current contact, send a one-time reminder and one gap notice when applicable, and report mail or publication failures as non-zero runs.
+The complete run publishes the selected contact, sends applicable reminders and notices, and reports failures as non-zero runs. Missing fields for all contacts are reported independently of duties; invalid email formats are not reported.
 
-This is specified by [[pkg/application/features/application.feature]] and implemented by [[pkg/application/application_bdd_test.go#TestApplicationFeatures]].
+This is specified by [[pkg/application/features/application.feature]] and implemented by [[pkg/application/application_bdd_test.go#TestApplicationFeatures]] and [[pkg/contacts/contacts_test.go#TestContactIssuesCheckEveryContactWithoutReportingInvalidEmails]].
 
 ### Publication-only mode
 
 The publication-only mode selects the current Swiss service day without loading administrators or sending mail, and propagates data-source and publication failures.
 
-This is covered by [[pkg/application/application_test.go#TestPublishOnly]], [[pkg/application/application_test.go#TestSameApplicationCanPublishOnlyAndRun]], [[pkg/application/application_test.go#TestPublishOnlyWithDAVAndFilePublisher]], and [[cmd/hilfmal/main_test.go#TestPublishOnlyStartupFailureDoesNotSendEmail]].
+This is covered by [[pkg/application/application_test.go#TestPublishOnly]], [[pkg/application/application_test.go#TestPublishOnlyLogsIncompleteContactsWithoutSendingMail]], [[pkg/application/application_test.go#TestSameApplicationCanPublishOnlyAndRun]], [[pkg/application/application_test.go#TestPublishOnlyWithDAVAndFilePublisher]], and [[cmd/hilfmal/main_test.go#TestPublishOnlyStartupFailureDoesNotSendEmail]].
 
 ### Swiss service date and ranges
 

@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"log"
-	"net/mail"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -13,6 +12,7 @@ import (
 	"gopkg.in/yaml.v3"
 
 	"oberfeld.be/hilfmal/pkg/application"
+	"oberfeld.be/hilfmal/pkg/contacts"
 	"oberfeld.be/hilfmal/pkg/datasource"
 	"oberfeld.be/hilfmal/pkg/mailer"
 	"oberfeld.be/hilfmal/pkg/models"
@@ -186,8 +186,7 @@ func validateConfig(config *models.Config) error {
 		return fmt.Errorf("sendmail_path must be an absolute path")
 	}
 	for _, address := range []string{config.Sender, config.EmergencyEmail} {
-		parsed, err := mail.ParseAddress(address)
-		if err != nil || parsed.Address != address || address != strings.TrimSpace(address) {
+		if !contacts.ValidEmail(address) {
 			return fmt.Errorf("configuration contains an invalid email address")
 		}
 	}

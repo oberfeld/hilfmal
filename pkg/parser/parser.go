@@ -498,7 +498,7 @@ func uniqueStrings(values []string) []string {
 
 // ParseVCard extracts the name, telephone number, and email addresses.
 func ParseVCard(vcard string) ([]models.Contact, error) {
-	var firstName, lastName, phone string
+	var firstName, lastName, displayName, uid, phone string
 	var emails []string
 	properties, err := readVCard(vcard)
 	if err != nil {
@@ -506,6 +506,10 @@ func ParseVCard(vcard string) ([]models.Contact, error) {
 	}
 	for _, prop := range properties {
 		switch prop.name {
+		case "FN":
+			displayName = unescapeText(prop.value)
+		case "UID":
+			uid = prop.value
 		case "N":
 			parts := splitVCardName(prop.value)
 			if len(parts) > 1 {
@@ -520,7 +524,7 @@ func ParseVCard(vcard string) ([]models.Contact, error) {
 			emails = append(emails, withoutMailto(strings.TrimSpace(prop.value)))
 		}
 	}
-	contact := models.Contact{Name: firstName, LastName: lastName, Phone: phone}
+	contact := models.Contact{Name: firstName, LastName: lastName, DisplayName: displayName, UID: uid, Phone: phone}
 	if len(emails) > 0 {
 		contact.Email = emails[0]
 		contact.AdditionalEmails = emails[1:]

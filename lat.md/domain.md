@@ -32,8 +32,8 @@ If a duration group has a missing CREATED value, creation time is skipped for th
 
 [[pkg/planner/planner.go#Planner#Reminder]] sends a reminder once for the first day of a continuous duty held by the same person. Invalid calendar entries and unresolved contacts become administrative issues rather than silently becoming an assignment.
 
-The application combines source issues, planner issues and uncovered days before emailing the administration. This behavior is coordinated by [[pkg/application/application.go#Application#collectIssues]].
+The application combines source issues, planner issues and uncovered days before emailing the administration. [[pkg/contacts/contacts.go#Contacts#Issues]] checks every contact for missing first name, family name, phone and email, even without a duty. Invalid email formats are not separately reported.
 
-For an unresolved contact, [[pkg/planner/planner.go#Planner#Issues]] identifies the duty and reports matching incomplete contacts and their missing or invalid required fields. Contacts without email are retained for diagnosis but remain ineligible for assignment.
+For an unresolved contact, [[pkg/planner/planner.go#Planner#Issues]] identifies the duty and reports matching incomplete contacts and their missing fields. Contacts without email are retained for diagnosis but remain ineligible for assignment; selection still requires a valid email address.
 
 An invalid or missing start date is reported with the event title, UID and available start value so the entry can be found; a timestamp retains its stated timezone.
