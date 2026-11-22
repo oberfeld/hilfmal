@@ -253,7 +253,7 @@ func TestPublishOnlyWithDAVAndFilePublisher(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if string(page) != "<p>Ada +41 79 123 45 67</p>" {
+			if string(page) != "<p>Ada Test +41 79 123 45 67</p>" {
 				t.Fatalf("published page = %q", page)
 			}
 		})
