@@ -2,9 +2,9 @@
 
 ## Überblick
 
-Das Go-Programm enthält die zentrale Logik von Hilfmal. Der Dienstplan und das Adressbuch bleiben in Nextcloud; das Programm soll auf dem Cyon-Server laufen. Die GitHub Action führt die Go-Prüfungen und die isolierten Docker-Integrationstests aus; Deployment und Cronjob-Einrichtung sind noch nicht umgesetzt.
+Das Go-Programm enthält die zentrale Logik von Hilfmal. Dienstplan und Adressbücher bleiben in Nextcloud; die GitHub Action prüft die Anwendung und deployt sie bei Pushes auf `main` zu Cyon, wo sie täglich per Cronjob ausgeführt wird.
 
-Die fachlichen Grundlagen stehen im [Konzept](konzept.md); die Bedienung für Mitwirkende und Administration ist in der [Nutzerdokumentation](doc.md) beschrieben. Die nachfolgenden Anforderungen beschreiben die geplante Umsetzung.
+Die fachlichen Grundlagen stehen im [Konzept](konzept.md); die Bedienung für Mitwirkende und Administration ist in der [Nutzerdokumentation](doc.md) beschrieben. Die folgenden Abschnitte halten den implementierten Stand und noch offene betriebliche Prüfungen fest.
 
 ## Daten und Zugriff
 
@@ -57,18 +57,16 @@ Für den Fall, dass das Administrationsadressbuch nicht gelesen werden kann, ist
 
 ## Installation und Zeitsteuerung
 
-- Ein Push auf `main` startet die GitHub Action und prüft das Go-Programm. Ein Deployment auf den Cyon-Server und die Cronjob-Einrichtung sind noch nicht implementiert.
-- Das geplante Deployment installiert das Go-Binary und richtet einen Cronjob ein, der es täglich um **06:00 Uhr Schweizer Zeit** (`Europe/Zurich`, einschliesslich Sommer- und Winterzeit) ausführt. Die Zeitzone muss bei der Einrichtung und im Betrieb ausdrücklich berücksichtigt werden.
-- Die Einrichtung ist wiederholbar: Ein erneutes Deployment aktualisiert den zu Hilfmal gehörenden Cronjob, ohne doppelte Einträge anzulegen oder andere Cronjobs zu verändern.
-- Ein fehlgeschlagenes Deployment oder eine fehlgeschlagene Cronjob-Einrichtung lässt die Action fehlschlagen. Auch der regelmässige Programmlauf muss auf Fehler überwacht werden; ein erfolgreiches Deployment allein bestätigt nicht, dass die täglichen Läufe funktionieren.
-- GitHub Actions baut und testet das Go-Programm. Ein künftiger Deployment-Schritt muss das Go-Binary per SSH auf den Server übertragen und den Cronjob einrichten. Die Übertragung muss Konfiguration und andere Daten erhalten und den SSH-Hostschlüssel prüfen.
-- Serverpfade, insbesondere für Installation, geschützte Konfiguration und veröffentlichte Webseite, müssen einfach konfigurierbar sein; Deployment und Cronjob verwenden die entsprechend konfigurierten Pfade.
+- Ein Push auf `main` führt zuerst die Go-Prüfungen und isolierten Integrationstests aus und deployt danach das statisch gelinkte Binary, Templates und Konfiguration per SSH und rsync. Der Workflow prüft den SSH-Hostschlüssel und scheitert bei Deployment- oder Cronjob-Fehlern.
+- Zugangsdaten werden aus GitHub Secrets in einer geschützten `.env`-Datei ausserhalb des öffentlichen Webverzeichnisses abgelegt. Danach aktualisiert der Workflow die Webseite mit `--publish-only` und richtet den täglichen Cronjob gemäss `cron_schedule` in der Server-Zeitzone ein.
+- Das Deployment aktualisiert den Hilfmal-Cronjob idempotent und erhält fremde Crontab-Einträge. Kann eine bestehende Crontab nicht gelesen werden, bricht das Deployment ab; nur die eindeutig erkannte Situation ohne vorhandene Crontab wird als leer behandelt.
+- Die Serverpfade sind im aktuellen Workflow festgelegt. Die genaue Server-Zeitzone muss vor dem Pilotbetrieb bestätigt werden, da der Cron-Ausdruck die Serverzeit verwendet und nicht selbst `Europe/Zurich` festlegt.
 
-Der geplante Cronjob startet das Go-Binary täglich um 06:00 Uhr Schweizer Zeit. Vor Inbetriebnahme ist sicherzustellen, dass die Zeitzone des Cron-Dienstes dies auch bei Sommer- und Winterzeit gewährleistet. Ein Fehler beim Lesen einer bestehenden Crontab darf nicht dazu führen, dass fremde Einträge überschrieben werden.
+Ein Deployment allein bestätigt nicht, dass tägliche Läufe auf Cyon erfolgreich sind. Vor dem Pilotbetrieb sind Cron-Zeitzone, lokaler Mailversand und Serverzugriff kontrolliert zu prüfen.
 
 ## Zugangsdaten und Sicherheit
 
-Für ein künftiges Deployment müssen das App-Passwort für den Zugriff auf Adressbücher und Kalender sowie die Serverzugangsdaten geschützt verwaltet werden. Sie dürfen weder im Repository noch in Workflow-Ausgaben veröffentlicht werden.
+Das App-Passwort für den Zugriff auf Adressbücher und Kalender sowie die Serverzugangsdaten werden durch GitHub Secrets bereitgestellt. Sie dürfen weder im Repository noch in Workflow-Ausgaben veröffentlicht werden.
 
 Da der Cronjob unabhängig von GitHub auf dem Server läuft, benötigt das Programm die Nextcloud-Zugangsdaten auch dort zur Laufzeit. Die Action stellt sie beim Deployment in einer geschützten Serverkonfiguration ausserhalb des öffentlichen Webverzeichnisses bereit. Nur der für das Programm benötigte Server-Account darf sie lesen. Zugangsdaten und personenbezogene Daten dürfen nicht in öffentlich ausgelieferten Dateien, Logs oder Fehlermeldungen erscheinen. Bei einem Passwortwechsel müssen die Secrets und die Serverkonfiguration aktualisiert und der Zugriff erneut geprüft werden.
 
@@ -111,5 +109,5 @@ Der Test soll die Dienste starten, auf deren tatsächliche Bereitschaft warten u
 
 - Bei Pull Requests und Pushes führt GitHub Actions Go-Formatprüfung, `go vet`, schnelle Tests, Build und den lokalen Integrationstest aus. Dieselben Testbefehle stehen lokal über `make verify` zur Verfügung.
 - Erst wenn die Prüfungen erfolgreich sind, darf der Deployment-Job bei einem Push auf `main` starten. Pull Requests, insbesondere aus Forks, erhalten keine Deployment-Secrets und können weder auf Cyon noch auf produktive Nextcloud-Daten zugreifen.
-- Die Verarbeitung der Crontab und das Deployment werden unabhängig vom echten Server getestet: Eine isolierte Test-Crontab mit fremden Einträgen und ein temporäres Zielverzeichnis prüfen wiederholtes Ausführen, Erhalt fremder Einträge und Daten sowie Fehler beim Lesen oder Schreiben. Der Test darf weder die echte Crontab noch produktive Serverpfade verändern.
+- Ein isolierter Crontab-Test prüft wiederholtes Ausführen, Erhalt fremder Einträge, das erstmalige Anlegen sowie Abbruch ohne Änderung bei Lesefehlern. Er verwendet einen Fake-`crontab`-Befehl und verändert weder die echte Crontab noch produktive Serverpfade.
 - Ein automatisierter Test kann nicht nachweisen, dass Cyon den lokalen Mailversand zustellt, der Cron-Dienst die richtige Zeitzone verwendet oder der produktive Server erreichbar ist. Vor dem Pilotbetrieb werden deshalb auf Cyon mit ausdrücklich freigegebenen Testempfängern ein kontrollierter Mailversand, der Cron-Aufruf und die Anzeige geprüft; Zugangsdaten und personenbezogene Daten dürfen dabei nicht in Logs oder Testartefakten erscheinen.

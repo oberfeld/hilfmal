@@ -18,15 +18,25 @@ import (
 )
 
 func TestAddDateIntervalIncludesWeeksAndDays(t *testing.T) {
-	app := newTestApplication(t, successfulSource(), &fakeMailer{}, &fakePublisher{}, 7, "P1M")
+	app := newTestApplication(t, successfulSource(), &fakeMailer{}, &fakePublisher{}, 7, "P1W2D")
 	start := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
 
-	got, err := app.addDateInterval(start, "P1W2D")
-	if err != nil {
-		t.Fatal(err)
-	}
+	got := app.gapInterval.addTo(start)
 	if want := start.AddDate(0, 0, 9); !got.Equal(want) {
-		t.Fatalf("addDateInterval() = %s, want %s", got, want)
+		t.Fatalf("gap interval = %s, want %s", got, want)
+	}
+}
+
+// @lat: [[tests#Tests#Daily application workflow#Positive gap interval validation]]
+func TestNewApplicationRejectsZeroGapInterval(t *testing.T) {
+	_, err := NewApplication(
+		successfulSource(), &fakeMailer{}, &fakePublisher{},
+		"sender@example.test", "emergency@example.test",
+		"reminder", "admin", "reminder", "admin",
+		7, "P0D",
+	)
+	if err == nil || !strings.Contains(err.Error(), "greater than zero") {
+		t.Fatalf("NewApplication() error = %v, want positive gap interval error", err)
 	}
 }
 

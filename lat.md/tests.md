@@ -28,6 +28,12 @@ A run at 06:00 uses the new Swiss service date, while earlier times use the prev
 
 This intent is covered across [[pkg/planner/planner_test.go#TestServiceDate]], [[pkg/planner/planner_test.go#TestServiceDateAtDaylightSavingTransitions]], and [[pkg/application/application_test.go#TestMonthRangeUsesSwissLocalMidnight]].
 
+### Positive gap interval validation
+
+The application rejects a syntactically valid but zero-length gap interval during construction, before a scheduled run can fail.
+
+This is covered by [[pkg/application/application_test.go#TestNewApplicationRejectsZeroGapInterval]].
+
 ## Calendar and contact resolution
 
 The parser and planner tests protect the meaning of duties when entries overlap or recur.
@@ -85,3 +91,9 @@ This intent is covered by [[pkg/mailer/mailer_test.go#TestBuildMessageEncodesSub
 Unit tests reject insecure DAV access and verify reads. Docker integration covers publication, reminders, refresh and failure notifications without production services.
 
 The integration entry points are [[cmd/integration/scenarios.go#verifyInitialRun]] and [[cmd/integration/scenarios.go#verifyContactRefresh]], with infrastructure described in [[tests/integration/compose.yaml]].
+
+### Safe cron updates
+
+Cron deployment preserves unrelated entries, replaces its own entry idempotently, initializes an absent crontab, and aborts without writing when reading an existing crontab fails.
+
+These behaviors are covered by [[tests/crontab_test.go#TestUpdateCrontabPreservesOtherJobsAndReplacesHilfmalJob]], [[tests/crontab_test.go#TestUpdateCrontabCreatesFirstCrontab]], and [[tests/crontab_test.go#TestUpdateCrontabDoesNotWriteAfterReadFailure]].

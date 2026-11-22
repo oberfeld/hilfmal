@@ -26,12 +26,21 @@ type Application struct {
 	sender           string
 	emergency        string
 	reminderDays     int
-	gapInterval      string
+	gapInterval      dateInterval
 	reminderTemplate string
 	adminTemplate    string
 	reminderSubject  string
 	adminSubject     string
 }
+
+type dateInterval struct {
+	years  int
+	months int
+	weeks  int
+	days   int
+}
+
+var dateIntervalPattern = regexp.MustCompile(`^P(?:(\d+)Y)?(?:(\d+)M)?(?:(\d+)W)?(?:(\d+)D)?$`)
 
 // NewApplication creates a new application instance
 func NewApplication(
@@ -59,9 +68,9 @@ func NewApplication(
 		return nil, fmt.Errorf("reminder days must be non-negative")
 	}
 
-	// Validate gap interval format (e.g., P1M, P1W, P7D)
-	if !isValidDateInterval(gapInterval) {
-		return nil, fmt.Errorf("invalid gap interval format")
+	parsedGapInterval, err := parseDateInterval(gapInterval)
+	if err != nil {
+		return nil, err
 	}
 
 	return &Application{
@@ -71,7 +80,7 @@ func NewApplication(
 		sender:           sender,
 		emergency:        emergency,
 		reminderDays:     reminderDays,
-		gapInterval:      gapInterval,
+		gapInterval:      parsedGapInterval,
 		reminderTemplate: reminderTemplate,
 		adminTemplate:    adminTemplate,
 		reminderSubject:  reminderSubject,
@@ -233,40 +242,39 @@ func (a *Application) calculateDateRange(now time.Time, p *planner.Planner) (tim
 
 	target := today.AddDate(0, 0, a.reminderDays)
 
-	gapEnd, err := a.addDateInterval(today, a.gapInterval)
-	if err != nil {
-		return time.Time{}, time.Time{}, time.Time{}, err
-	}
-
-	if gapEnd.Before(today) || gapEnd.Equal(today) {
-		return time.Time{}, time.Time{}, time.Time{}, fmt.Errorf("gap interval must be greater than zero")
-	}
+	gapEnd := a.gapInterval.addTo(today)
 
 	return today, target, gapEnd, nil
 }
 
-func (a *Application) addDateInterval(t time.Time, interval string) (time.Time, error) {
-	// Parse interval like P1M, P1W, P7D
-	re := regexp.MustCompile(`^P(?:(\d+)Y)?(?:(\d+)M)?(?:(\d+)W)?(?:(\d+)D)?$`)
-	matches := re.FindStringSubmatch(interval)
+func parseDateInterval(value string) (dateInterval, error) {
+	matches := dateIntervalPattern.FindStringSubmatch(value)
 	if matches == nil {
-		return time.Time{}, fmt.Errorf("invalid interval format: %s", interval)
+		return dateInterval{}, fmt.Errorf("invalid interval format: %s", value)
 	}
 
-	var units [4]int
+	var interval dateInterval
+	units := []*int{&interval.years, &interval.months, &interval.weeks, &interval.days}
 	for i := 1; i < len(matches); i++ {
 		if matches[i] == "" {
 			continue
 		}
 		value, err := strconv.Atoi(matches[i])
 		if err != nil {
-			return time.Time{}, fmt.Errorf("ungültiges Datumsintervall %q: %w", interval, err)
+			return dateInterval{}, fmt.Errorf("ungültiges Datumsintervall: %w", err)
 		}
-		units[i-1] = value
+		*units[i-1] = value
 	}
 
-	result := t.AddDate(units[0], units[1], units[2]*7+units[3])
-	return result, nil
+	if interval == (dateInterval{}) {
+		return dateInterval{}, fmt.Errorf("gap interval must be greater than zero")
+	}
+
+	return interval, nil
+}
+
+func (interval dateInterval) addTo(t time.Time) time.Time {
+	return t.AddDate(interval.years, interval.months, interval.weeks*7+interval.days)
 }
 
 func (a *Application) loadEvents(today, target, gapEnd time.Time) ([]models.Event, error) {
@@ -326,11 +334,6 @@ func (a *Application) reportFailure(err error, stage string, admins []string) {
 			log.Printf("Hilfmal: Failed to send error notification: %v", err)
 		}
 	}
-}
-
-func isValidDateInterval(interval string) bool {
-	re := regexp.MustCompile(`^P(?:(\d+)Y)?(?:(\d+)M)?(?:(\d+)W)?(?:(\d+)D)?$`)
-	return interval != "P" && re.MatchString(interval)
 }
 
 func uniqueStrings(values []string) []string {

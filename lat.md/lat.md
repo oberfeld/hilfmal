@@ -2,7 +2,7 @@
 
 Hilfmal operates a volunteer on-duty service for shared community rooms: it turns a Nextcloud plan into a public contact page and operational reminders.
 
-This graph records the implemented current state and the rationale that is supported by project documentation or tests. It does not add deployment or operational intent that has not been implemented.
+This graph records the implemented current state and its supported rationale, while separating code-verified behavior from operational assumptions.
 
 ## Navigate
 
@@ -17,4 +17,4 @@ Use these anchors by concern: overview for purpose and pilot boundaries, domain 
 
 The Go application reads CalDAV and CardDAV data, calculates the duty, sends local-mail submissions, and atomically replaces a static HTML page. The CLI uses system time and a YAML configuration outside the public web directory.
 
-The initial implementation and tests are present, but deployment and recurring Cron execution are not yet implemented. See [[architecture#Deployment status]] for the boundary and [[overview#Open review points]] for unknowns.
+The Go application, Cyon deployment workflow, and recurring Cron setup are implemented. The exact server timezone and production delivery behavior remain operational checks; see [[architecture#Deployment status]] and [[overview#Open review points]].

@@ -29,6 +29,6 @@ The pilot should review support and neighbourhood outcomes, volunteer sufficienc
 
 These points need operational or organizational confirmation before they can be described as verified project decisions.
 
-- Production deployment and the exact Cyon Cron setup are documented as planned rather than implemented.
+- Cyon deployment and Cron setup are implemented in the GitHub workflow; the server timezone and production delivery behavior still require operational confirmation.
 - The intended one-year pilot evaluation process and its success thresholds need validation by the WBGO.
 - Confirmation of the local sendmail delivery behavior and the Cron host timezone belongs to a controlled Cyon pilot, not unit or Docker tests.

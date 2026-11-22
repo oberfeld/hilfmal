@@ -42,10 +42,11 @@ jobs:
 
           DEPLOY_DIR="$RUNNER_TEMP/hilfmal-deploy"
           umask 077
-          mkdir -p "$DEPLOY_DIR/templates"
+          mkdir -p "$DEPLOY_DIR/templates" "$DEPLOY_DIR/scripts"
           CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o "$DEPLOY_DIR/hilfmal" ./cmd/hilfmal
           cp config.cyon.yaml "$DEPLOY_DIR/config.yaml"
           cp templates/admin.txt templates/reminder.txt templates/web.html "$DEPLOY_DIR/templates/"
+          cp scripts/update-crontab.sh "$DEPLOY_DIR/scripts/"
           user_escaped=${CHISCHTE_UN//\'/\'\\\'\'}
           password_escaped=${CHISCHTE_PW//\'/\'\\\'\'}
           printf "HILFMAL_DAV_USER='%s'\nHILFMAL_DAV_PASSWORD='%s'\n" \
@@ -94,13 +95,7 @@ jobs:
           chmod 600 /home/wohnenim/hilfmal/.env
 
           cron_job="$CRON_SCHEDULE cd /home/wohnenim/hilfmal && set -a && . /home/wohnenim/hilfmal/.env && set +a && /home/wohnenim/hilfmal/hilfmal /home/wohnenim/hilfmal/config.yaml # hilfmal deployment"
-          existing_crontab="$(crontab -l 2>/dev/null || true)"
-          {
-            if [ -n "$existing_crontab" ]; then
-              printf '%s\n' "$existing_crontab" | grep -Fv '# hilfmal deployment' || true
-            fi
-            printf '%s\n' "$cron_job"
-          } | crontab -
+          sh /home/wohnenim/hilfmal/scripts/update-crontab.sh "$cron_job"
 
           cd /home/wohnenim/hilfmal
           set -a
