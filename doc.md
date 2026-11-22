@@ -1,6 +1,6 @@
 # Hilfmal: Anleitung für Mitwirkende und Administration
 
-Diese Anleitung beschreibt den vorgesehenen Ablauf. Das Programm ist noch nicht produktiv eingerichtet; automatische Benachrichtigungen sind noch nicht in Betrieb. Die Idee hinter Hilfmal steht im [Konzept](konzept.md), die technischen Anforderungen stehen in der [Architektur](architektur.md).
+Diese Anleitung beschreibt den vorgesehenen Ablauf und setzt keinen produktiven Betrieb voraus. Deployment und Cronjob sind im GitHub-Workflow technisch eingerichtet; ob der Dienst auf Cyon produktiv läuft und E-Mails zuverlässig zugestellt werden, muss vor dem Pilotbetrieb noch kontrolliert werden. Die Idee hinter Hilfmal steht im [Konzept](konzept.md), übergeordnete technische Entscheide und offene Betriebsprüfungen in der [Architektur](architektur.md). Der implementierte Softwarestand ist in [lat.md/](lat.md/) beschrieben.
 
 ## Für Mitwirkende
 

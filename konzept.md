@@ -28,7 +28,7 @@ Die Lösung besteht aus einem Nextcloud-Kalender, einer Liste der Mitwirkenden i
 - Ein weiterer Hinweis informiert die Koordination über nicht besetzte Dienste.
 - Eine Liste in Nextcloud führt die Mitwirkenden und ihre Telefonnummern.
 
-Eine Seite auf den «Grünen Seiten» soll den Ablauf für Mitwirkende erklären. Die [Nutzerdokumentation](doc.md) beschreibt die Aufgaben von Mitwirkenden und Administration; die [Architektur](architektur.md) hält Anforderungen und technische Entscheide fest.
+Eine Seite auf den «Grünen Seiten» soll den Ablauf für Mitwirkende erklären. Die [Nutzerdokumentation](doc.md) beschreibt die Aufgaben von Mitwirkenden und Administration. Übergeordnete technische Entscheide und offene Betriebsprüfungen stehen in der [Architektur](architektur.md); der implementierte Softwarestand ist in [lat.md/](lat.md/) dokumentiert.
 
 ## Pilot und Auswertung
 

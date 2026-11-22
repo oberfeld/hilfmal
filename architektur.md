@@ -1,113 +1,21 @@
-# Architektur von Hilfmal
+# Architektur und Betriebsentscheide
 
-## Überblick
+## Geltungsbereich
 
-Das Go-Programm enthält die zentrale Logik von Hilfmal. Dienstplan und Adressbücher bleiben in Nextcloud; die GitHub Action prüft die Anwendung und deployt sie bei Pushes auf `main` zu Cyon, wo sie täglich per Cronjob ausgeführt wird.
+Dieses Dokument hält die übergeordneten technischen Entscheide und noch nötigen Betriebsprüfungen fest. Die detaillierte Beschreibung des implementierten Verhaltens, der Fachregeln und der Tests mit Verweisen auf den Code liegt im [lat-Wissensgraphen](lat.md/).
 
-Die fachlichen Grundlagen stehen im [Konzept](konzept.md); die Bedienung für Mitwirkende und Administration ist in der [Nutzerdokumentation](doc.md) beschrieben. Die folgenden Abschnitte halten den implementierten Stand und noch offene betriebliche Prüfungen fest.
+Das [Konzept](konzept.md) beschreibt Zweck und Pilotziele; die [Nutzerdokumentation](doc.md) erklärt die Abläufe für Mitwirkende und Administration.
 
-## Daten und Zugriff
+## Technische Entscheide
 
-- Der Dienstplan wird über CalDAV aus dem Nextcloud-Kalender gelesen.
-- Die Mitwirkenden und die Administrationsadressen werden über CardDAV aus zwei getrennten Nextcloud-Adressbüchern gelesen.
-- Die eingeladene Person eines Kalendereintrags wird anhand ihrer E-Mail-Adresse einem Kontakt zugeordnet. Alternativ kann die Person anhand ihres Namens im Titel oder der organisierenden Person gefunden werden. Vorname und Telefonnummer stammen aus dem Kontakt.
-- Der Einladungsstatus wird nicht berücksichtigt: Ob eine Person zugesagt, abgesagt oder noch nicht geantwortet hat, ändert die Zuordnung nicht.
-- Für den Zugriff auf Kalender und Adressbücher wird für den Service-Account ein eigenes App-Passwort erzeugt und verwendet.
+- Nextcloud bleibt die führende Quelle für Dienstplan und Kontaktdaten. Das Programm führt keine parallele Stammdatenpflege ein.
+- Hilfmal läuft als täglicher Batch. Die Webseite ist statisches HTML und enthält öffentlich nur Vorname und Telefonnummer der diensthabenden Person.
+- E-Mails werden über den lokalen sendmail-kompatiblen Dienst des Servers übergeben. Das Programm verwaltet keine eigenen SMTP-Zugangsdaten.
+- Deployment und Cronjob werden über GitHub Actions eingerichtet. Die Zugangsdaten werden für die Laufzeit ausserhalb des öffentlichen Webverzeichnisses auf dem Server bereitgestellt.
+- Änderungen in Nextcloud werden erst beim nächsten erfolgreichen Lauf veröffentlicht. Bei einem verpassten oder fehlgeschlagenen Lauf bleibt die zuletzt veröffentlichte Telefonnummer sichtbar; diese Einschränkung muss im Betrieb berücksichtigt werden.
 
-Der eigene Nextcloud-Service-Account besitzt den Kalender und beide Adressbücher, hat aber keine Nextcloud-Adminrechte. Die Koordination pflegt die Daten über ihren persönlichen Account und entsprechende Freigaben. Das App-Passwort hat die Rechte des Service-Accounts und ist entsprechend zu schützen.
+Die genauen DAV-Verträge, Zuordnungs- und Prioritätsregeln, Fehlerbehandlung und Testabdeckung stehen in [lat.md/architecture.md](lat.md/architecture.md), [lat.md/domain.md](lat.md/domain.md) und [lat.md/tests.md](lat.md/tests.md).
 
-### Entscheid zur Personenzuordnung
+## Vor dem Pilotbetrieb zu prüfen
 
-Die Kontakte im Adressbuch «Mitwirkende» enthalten Vorname, Nachname, Telefonnummer und E-Mail-Adresse. Innerhalb eines Eintrags wird zuerst eine gültige eingeladene Person ausser der organisierenden Person anhand der E-Mail-Adresse ausgewählt. Danach wird der Titel anhand vollständiger Vor- und bei Bedarf Nachnamen abgeglichen. Fehlt bei gleichem Vornamen der Nachname oder haben passende Personen denselben Vor- und Nachnamen, wird nach der alphabetisch ersten gültigen E-Mail-Adresse gewählt und die Administration benachrichtigt; bei identischer E-Mail-Adresse entscheidet die Telefonnummer. Andere ungelöste Mehrdeutigkeiten verhindern die Zuordnung. Nur wenn der Titel keine Person enthält, wird die organisierende Person anhand ihrer E-Mail-Adresse berücksichtigt. Bei mehreren E-Mail-Adressen eines Kontakts wird für eine Titelzuordnung die erste gültige verwendet; bei einer Einladung die eingeladene Adresse.
-
-Als Alternativen wurden Nextcloud Tables mit einer Personenkennung im Kalendereintrag sowie eine Tabellen- oder JSON-Datei verworfen. Sie ermöglichen ebenfalls das Auslesen durch das Programm, erfordern aber eine separat gepflegte Zuordnung und nutzen die Teilnehmerfunktion des Kalenders nicht direkt.
-
-## Dienstzeiten und Auswahl
-
-- Ein Dienst ist lückenlos an jedem Tag erforderlich. Die Kalendereinträge werden als ganztägige Einträge erfasst. Ein Eintrag für einen Tag gilt als Dienst von **06:00 Uhr dieses Tages bis 06:00 Uhr des nächsten Tages**, jeweils in Schweizer Zeit (`Europe/Zurich`).
-- Auch ein mehrtägiger ganztägiger Eintrag kann mehrere aufeinanderfolgende Dienste abdecken. Die Dauer des gesamten Eintrags wird für die Auswahl bei Überschneidungen verwendet.
-- Überschneiden sich Einträge, hat der kürzere Eintrag Vorrang. Sind sie gleich lang, hat der später erstellte Eintrag Vorrang. So kann eine Vertretung durch einen kürzeren oder bei gleicher Dauer später erstellten Eintrag organisiert werden.
-- Kann die Priorität damit nicht bestimmt werden, etwa bei gleichem oder fehlendem Erstellungszeitpunkt, werden die UUIDs der Einträge alphanumerisch aufsteigend sortiert. Der erste Eintrag hat Vorrang.
-- Fehlt bei mindestens einem Eintrag gleicher Dauer der Erstellungszeitpunkt, entscheidet für diese Dauergruppe die UUID-Reihenfolge. So bleibt die Auswahl unabhängig von der Reihenfolge der eingelesenen Einträge.
-- Pro Dienstzeitraum wird wenn möglich genau ein Kontakt ausgewählt und auf der Webseite angezeigt. Ist der Kontakt des vorrangigen Eintrags unvollständig oder nicht eindeutig zuordenbar, wird der nächste gültige Eintrag verwendet und die Administration informiert. Bei gleichem Vornamen oder gleichem Vor- und Nachnamen wird gegebenenfalls wie oben beschrieben ein Kontakt ausgewählt und gemeldet. Gibt es keinen gültigen Eintrag, wird keine Telefonnummer veröffentlicht.
-- Wiederkehrende ganztägige Einträge und deren Ausnahmen werden berücksichtigt.
-
-## Aufgaben des Go-Programms
-
-Der tägliche Programmlauf liest und prüft den Dienstplan und die Adressbücher. Benachrichtigungen werden ausschliesslich per E-Mail verschickt. Er übernimmt folgende Aufgaben:
-
-1. **Mitwirkende benachrichtigen:** Die eingeteilte Person wird einmal vor Beginn eines zusammenhängenden Dienstes an ihren bevorstehenden Dienst und an die Organisation einer Vertretung bei Verhinderung erinnert. Der Vorlauf beträgt standardmässig sieben Tage und ist konfigurierbar.
-2. **Lücken melden:** Die Administration erhält einen Hinweis auf Tage ohne eingeteilten Dienst. Eine lückenlose Abdeckung ist jeden Tag erforderlich. Geprüft wird standardmässig ein Monat in die Zukunft; dieser Zeitraum ist konfigurierbar.
-3. **Unvollständige Einträge melden:** Die Administration erhält Hinweise auf Dienstplaneinträge ohne eindeutige Zuordnung und auf fehlende Vornamen, Nachnamen, Telefonnummern oder E-Mail-Adressen sämtlicher Mitwirkenden, unabhängig von Diensteinträgen. Ungültige E-Mail-Adressen werden nicht eigens gemeldet; für die Dienstauswahl ist weiterhin eine gültige Adresse erforderlich.
-4. **Webseite bereitstellen:** Das Programm stellt die Webseite mit Vorname und Telefonnummer der aktuell diensthabenden Person bereit. Andere Angaben aus Kalender und Adressbuch werden nicht öffentlich angezeigt.
-
-Für E-Mails und Webseite stehen einfach anzupassende Templates bereit. Diese trennen die Gestaltung und Texte von der Programmlogik. Als Absenderadresse wird standardmässig `hilfmal@oberfeld.be` verwendet; sie ist konfigurierbar.
-
-### E-Mail-Versand
-
-Hilfmal übergibt E-Mails an den lokalen sendmail-kompatiblen Mailversand des Servers, ohne eigene SMTP-Zugangsdaten im Programm. Der absolute Programmpfad ist konfigurierbar; fehlt er, wird `sendmail` im `PATH` gesucht. Die konfigurierte Absenderadresse wird für `From` und `Reply-To` verwendet. Texte werden als UTF-8 versendet; Betreff und Header müssen für den Mailversand korrekt kodiert werden.
-
-Der Rückgabewert des lokalen Mailversands wird geprüft. Ein Fehler beim Versand wird protokolliert und der Programmlauf als fehlgeschlagen ausgewiesen. Anders als bei Putzmal darf ein fehlgeschlagener Einzelversand nicht zu einem erfolgreichen Lauf führen. Ein erfolgreicher Rückgabewert bestätigt nur die Annahme durch den lokalen Mailversand, nicht die Zustellung an die Empfänger.
-
-Der tägliche Lauf liest die Daten jeweils neu und aktualisiert die Webseite um 06:00 Uhr. Es wird kein Cache der eingelesenen Kalender- oder Adressbuchdaten gepflegt. Das veröffentlichte Ergebnis gilt bis zum nächsten vorgesehenen Cronjob. Zwischen zwei Läufen werden Änderungen in Nextcloud nicht automatisch übernommen; sie erscheinen erst nach dem nächsten erfolgreichen Lauf.
-
-Wenn keine Person eindeutig zugeordnet werden kann, zeigt die Webseite an, dass keine verlässliche Dienstinformation verfügbar ist. Die Webseite wird als statische HTML-Datei veröffentlicht. Wird ein Lauf verpasst oder schlägt er fehl, bleibt der zuletzt veröffentlichte Inhalt einschliesslich Telefonnummer sichtbar, bis ein neuer Lauf erfolgreich veröffentlicht. Diese bewusst akzeptierte Einschränkung bedeutet, dass die Veröffentlichung keine serverseitige Ablaufprüfung bietet. Fehler beim Abrufen, Verarbeiten, Versenden oder Veröffentlichen werden protokolliert und der Administration per E-Mail gemeldet; sie dürfen nicht als erfolgreicher Lauf erscheinen. Die Aufbewahrung der Daten und Protokolle ist auf das für den Betrieb Nötige zu begrenzen.
-
-Für den Fall, dass das Administrationsadressbuch nicht gelesen werden kann, ist zusätzlich eine Notfall-E-Mail-Adresse konfigurierbar. Fehler beim Programmstart können nur per E-Mail gemeldet werden, wenn Konfiguration, Absender und Notfalladresse bereits verfügbar sind; andernfalls bleiben Protokoll und fehlgeschlagener Exit-Status.
-
-## Installation und Zeitsteuerung
-
-- Ein Push auf `main` führt zuerst die Go-Prüfungen und isolierten Integrationstests aus und deployt danach das statisch gelinkte Binary, Templates und Konfiguration per SSH und rsync. Der Workflow prüft den SSH-Hostschlüssel und scheitert bei Deployment- oder Cronjob-Fehlern.
-- Zugangsdaten werden aus GitHub Secrets in einer geschützten `.env`-Datei ausserhalb des öffentlichen Webverzeichnisses abgelegt. Danach aktualisiert der Workflow die Webseite mit `--publish-only` und richtet den täglichen Cronjob gemäss `cron_schedule` in der Server-Zeitzone ein.
-- Das Deployment aktualisiert den Hilfmal-Cronjob idempotent und erhält fremde Crontab-Einträge. Kann eine bestehende Crontab nicht gelesen werden, bricht das Deployment ab; nur die eindeutig erkannte Situation ohne vorhandene Crontab wird als leer behandelt.
-- Die Serverpfade sind im aktuellen Workflow festgelegt. Die genaue Server-Zeitzone muss vor dem Pilotbetrieb bestätigt werden, da der Cron-Ausdruck die Serverzeit verwendet und nicht selbst `Europe/Zurich` festlegt.
-
-Ein Deployment allein bestätigt nicht, dass tägliche Läufe auf Cyon erfolgreich sind. Vor dem Pilotbetrieb sind Cron-Zeitzone, lokaler Mailversand und Serverzugriff kontrolliert zu prüfen.
-
-## Zugangsdaten und Sicherheit
-
-Das App-Passwort für den Zugriff auf Adressbücher und Kalender sowie die Serverzugangsdaten werden durch GitHub Secrets bereitgestellt. Sie dürfen weder im Repository noch in Workflow-Ausgaben veröffentlicht werden.
-
-Da der Cronjob unabhängig von GitHub auf dem Server läuft, benötigt das Programm die Nextcloud-Zugangsdaten auch dort zur Laufzeit. Die Action stellt sie beim Deployment in einer geschützten Serverkonfiguration ausserhalb des öffentlichen Webverzeichnisses bereit. Nur der für das Programm benötigte Server-Account darf sie lesen. Zugangsdaten und personenbezogene Daten dürfen nicht in öffentlich ausgelieferten Dateien, Logs oder Fehlermeldungen erscheinen. Bei einem Passwortwechsel müssen die Secrets und die Serverkonfiguration aktualisiert und der Zugriff erneut geprüft werden.
-
-Die Konfiguration ist eine YAML-Datei und wird als Datenformat eingelesen. Ihr Pfad bleibt ein Kommandozeilenargument, damit Cronjob und Tests unterschiedliche geschützte Konfigurationsdateien verwenden können.
-
-Vor Inbetriebnahme sind der lokale Mailversand, die Cron-Zeitzone und die Berechtigung zur Einrichtung der Crontab auf dem gewählten Cyon-Angebot zu prüfen.
-
-## Testkonzept
-
-Die schnellen Tests werden mit Go `testing` umgesetzt. `make verify` führt Formatprüfung, `go vet`, Tests mit Race-Detector und Coverage, Build sowie die Docker-Compose-Integrationstests aus. Ziel ist, die fachlichen Regeln und möglichst viel des Betriebs lokal und in GitHub Actions reproduzierbar zu prüfen, ohne produktive Nextcloud-Daten, E-Mails oder Cyon-Zugänge zu verwenden.
-
-### Testbare Struktur
-
-- Die fachliche Logik für Zeiträume, Priorisierung, Kontaktzuordnung und Benachrichtigungen wird von CalDAV-/CardDAV-Zugriff, Uhr, Mailversand und Dateisystem getrennt. Diese Schnittstellen können in schnellen Tests durch kontrollierbare Testimplementierungen ersetzt werden.
-- Die aktuelle Zeit wird innerhalb des Programms über eine austauschbare Uhr bezogen. Tests geben feste Zeitpunkte einschliesslich Zeitzone vor; im Betrieb wird ausschliesslich die Systemzeit verwendet. Ein Test-Zeitpunkt darf nicht über eine öffentlich erreichbare Anfrage gesetzt werden können.
-- Tests verwenden ausschliesslich synthetische Kontakte, reservierte Beispieladressen und eigene Kalendereinträge. Testkonfiguration und Zugangsdaten sind von der Produktion getrennt; das Testziel darf keine produktiven Endpunkte verwenden.
-- Tests für die statische HTML-Veröffentlichung prüfen das Escaping und den Inhalt; ein ausgebliebener oder fehlgeschlagener Lauf lässt die bestehende Datei unverändert.
-
-### Schnelle automatisierte Tests
-
-Die Go-Testsuite verwendet versionierte Testdaten für Kalender und Kontakte. Sie läuft ohne Nextcloud, Mailserver und Cyon und prüft mindestens:
-
-- **Dienstzeiten:** unmittelbar vor, genau um und nach 06:00 Uhr, mehrere aufeinanderfolgende Tage und mehrtägige Ganztageseinträge. Auch Monats- und Jahreswechsel sowie beide Zeitumstellungen in `Europe/Zurich` werden mit festen Daten geprüft.
-- **Priorität und Zuordnung:** kürzerer Eintrag, späterer Erstellungszeitpunkt, aufsteigend sortierte UUID als letzte Entscheidung und unabhängiges Ergebnis bei anderer Eingabereihenfolge. Einladungsantworten verändern die Auswahl nicht; fehlende oder mehrdeutige Personen und Kontakte führen zu einem Hinweis. Bei gleichem Vornamen oder gleichem Vor- und Nachnamen wird gegebenenfalls ein Kontakt ausgewählt und gemeldet.
-- **Erinnerungen und Lücken:** Standardwerte eine Woche und ein Monat sowie abweichende Konfigurationen, Grenzen der Prüfzeiträume und durchgehende Abdeckung. Empfänger, Absender, Inhalt und Zeitpunkt der erzeugten Nachrichten werden überprüft.
-- **Webseite und Templates:** genau ein ausgewählter Kontakt mit Vorname und Telefonnummer, keine anderen Kontakt- oder Kalenderdaten, korrektes Escaping und anpassbare Templates. Ohne gültigen Kontakt wird eine entsprechende Meldung statt einer Nummer angezeigt. Die Seite ist statisches HTML; nach einem ausgebliebenen oder fehlgeschlagenen Lauf bleibt die zuletzt veröffentlichte Telefonnummer sichtbar.
-- **Fehler und Konfiguration:** ungültige oder fehlende Angaben, nicht erreichbare Dienste, Versand- und Schreibfehler sowie fehlende Berechtigungen. Die Tests prüfen Fehlermeldung, Fehlerprotokoll und Exit-Status; auch ein gescheiterter E-Mail-Versand darf nicht als Erfolg gelten.
-
-### Lokaler Integrationstest
-
-Eine mit Docker Compose startbare, vom produktiven Betrieb getrennte Go-Testumgebung umfasst:
-
-1. Eine isolierte Nextcloud-Testinstanz mit einem Testaccount, einem Kalender und zwei Adressbüchern. Ein Setup-Schritt richtet sie ein und lädt synthetische CalDAV-/CardDAV-Testdaten, einschliesslich eines ganztägigen mehrtägigen Eintrags, einer Vertretung und einer Lücke.
-2. Einen Go-Testcontainer, der das Programm mit einer separaten Testkonfiguration und einem temporären Ausgabeverzeichnis ausführt. Die erzeugte HTML-Datei wird geprüft; das öffentliche Verzeichnis darf weder Konfiguration noch Zugangsdaten enthalten.
-3. Mailpit als lokalen Mailfänger. Der Testcontainer leitet den lokalen sendmail-Aufruf mittels `msmtp` an Mailpit um. Der Test überprüft die abgefangenen Nachrichten und ihre Empfänger. Das interne Docker-Netz lässt keine E-Mails ins Internet zu.
-
-Der Test soll die Dienste starten, auf deren tatsächliche Bereitschaft warten und den täglichen Programmlauf mit einer festen Testzeit ausführen. Er prüft die angezeigte Person, E-Mails für Erinnerung und Administration, die erzeugte HTML-Datei und den Exit-Status. Danach ändert er einen Kontakt und führt einen weiteren Lauf aus: Die Änderung darf erst dann sichtbar werden. Der reguläre Programmeinstieg wird zusätzlich mit der Systemzeit aufgerufen. Ein weiterer Fall simuliert einen fehlgeschlagenen Datenzugriff. Die Testdaten und Container werden anschliessend wieder entfernt. Der Aufruf und die Voraussetzungen stehen in der [README](README.md).
-
-### Pipeline und Deployment
-
-- Bei Pull Requests und Pushes führt GitHub Actions Go-Formatprüfung, `go vet`, schnelle Tests, Build und den lokalen Integrationstest aus. Dieselben Testbefehle stehen lokal über `make verify` zur Verfügung.
-- Erst wenn die Prüfungen erfolgreich sind, darf der Deployment-Job bei einem Push auf `main` starten. Pull Requests, insbesondere aus Forks, erhalten keine Deployment-Secrets und können weder auf Cyon noch auf produktive Nextcloud-Daten zugreifen.
-- Ein isolierter Crontab-Test prüft wiederholtes Ausführen, Erhalt fremder Einträge, das erstmalige Anlegen sowie Abbruch ohne Änderung bei Lesefehlern. Er verwendet einen Fake-`crontab`-Befehl und verändert weder die echte Crontab noch produktive Serverpfade.
-- Ein automatisierter Test kann nicht nachweisen, dass Cyon den lokalen Mailversand zustellt, der Cron-Dienst die richtige Zeitzone verwendet oder der produktive Server erreichbar ist. Vor dem Pilotbetrieb werden deshalb auf Cyon mit ausdrücklich freigegebenen Testempfängern ein kontrollierter Mailversand, der Cron-Aufruf und die Anzeige geprüft; Zugangsdaten und personenbezogene Daten dürfen dabei nicht in Logs oder Testartefakten erscheinen.
+Die organisatorische Auswertung nach dem Pilotjahr und ihre Erfolgskriterien müssen durch die WBGO festgelegt werden; siehe [Konzept](konzept.md).

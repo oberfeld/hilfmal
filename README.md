@@ -14,9 +14,10 @@ Die diensthabende Person ist Anlaufstelle für Jugendliche und Anwohnende: Sie v
 
 ## Dokumentation
 
-- [Konzept](konzept.md): Idee, Organisation und Ziele des Pilotbetriebs.
-- [Nutzerdokumentation](doc.md): Anleitung für Mitwirkende und Administration.
-- [Architektur](architektur.md): technische Anforderungen und aktuelle Entscheide.
+- [Konzept](konzept.md): organisatorische Idee und Ziele des Pilotbetriebs.
+- [Nutzerdokumentation](doc.md): praktische Anleitung für Mitwirkende und Administration.
+- [Architektur](architektur.md): übergeordnete technische Entscheide und offene Betriebsprüfungen.
+- [lat.md/](lat.md/): code-nahe Beschreibung des implementierten Verhaltens, der Fachregeln und Tests.
 
 ## Go-Anwendung
 
@@ -41,31 +42,25 @@ Der Aufruf verwendet die Systemzeit und greift über HTTPS auf Nextcloud zu. Er 
 
 **Hinweis zur statischen Webseite:** Die HTML-Datei blendet Kontaktdaten nach einer festgelegten Zeit nicht automatisch aus. Wenn ein Lauf ausbleibt oder fehlschlägt, bleibt die zuletzt veröffentlichte Telefonnummer sichtbar, bis ein neuer erfolgreicher Lauf die Datei ersetzt.
 
-Texte und Gestaltung stehen in `templates/`; die Pfade und E-Mail-Betreffzeilen sind konfigurierbar. Das Web-Template unterstützt `{{name}}`, `{{phone}}` und `{{phone_url}}` für den Anruflink. `{{contact_hidden}}` und `{{unavailable_hidden}}` blenden je nach Dienstinformation den entsprechenden Bereich aus. `gap_interval` verwendet ein positives Datumsintervall wie `P1M`; der Erinnerungsvorlauf wird in Tagen angegeben.
+Texte und Gestaltung stehen in `templates/`; Pfade und E-Mail-Betreffzeilen sind konfigurierbar.
 
-## Tests und Migration
+## Tests
 
-Die Application-Szenarien sind als Godog-BDD formuliert. Sie testen den vollständigen Programmlauf mit In-Memory-Adaptern – einschliesslich fehlgeschlagenem E-Mail-Versand, nicht lesbarem Admin-Adressbuch und trotzdem ausgeführter Veröffentlichung – ohne Nextcloud, SMTP oder Docker. Der schnelle, lesbare Lauf zeigt die geprüften Szenarien direkt an:
+Die Testfälle und ihr fachlicher Zweck sind in [lat.md/tests.md](lat.md/tests.md) dokumentiert. Die schnellen Tests benötigen keine externen Dienste:
 
 ```bash
 make test-application
-```
-
-Die Szenarien zur Kontaktzuordnung stehen in `pkg/planner/features/kontaktzuordnung.feature` und lassen sich mit `go test -v ./pkg/planner -run TestContactFeatures` ausführen.
-
-Die übrigen schnellen Go-Tests laufen ebenfalls ohne externe Dienste:
-
-```bash
 go test ./...
 ```
 
-Mutationstests für alle Go-Pakete laufen separat und sind nicht Teil von `make verify`, da sie deutlich länger dauern können. Gremlins wird in der festgelegten Version beim ersten Aufruf automatisch geladen:
+Die Kontaktzuordnungs-Szenarien lassen sich separat ausführen. Mutationstests für alle Go-Pakete sind nicht Teil von `make verify` und dauern deutlich länger:
 
 ```bash
+go test -v ./pkg/planner -run TestContactFeatures
 make mutation-test
 ```
 
-Die GitHub Action führt `make verify` aus. Der davon getrennte Integrationstest verwendet eine isolierte Nextcloud-Instanz und Mailpit; er benötigt keine produktiven Konten oder Zugangsdaten.
+Die GitHub Action führt `make verify` aus. Darin enthalten sind auch isolierte Docker-Integrationstests mit Nextcloud und Mailpit; produktive Konten oder Zugangsdaten werden dafür nicht verwendet.
 
 ### Cyon-Deployment
 
