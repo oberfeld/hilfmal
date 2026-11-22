@@ -79,7 +79,7 @@ func (p *FilePublisher) render(contact *models.Contact) string {
 	name, phone, phoneURL := "", "", ""
 	contactHidden, unavailableHidden := "hidden", ""
 	if contact != nil {
-		name = html.EscapeString(contact.Name)
+		name = html.EscapeString(strings.TrimSpace(contact.Name + " " + contact.LastName))
 		phone = html.EscapeString(contact.Phone)
 		number := strings.Join(strings.Fields(contact.Phone), "")
 		if strings.HasPrefix(strings.ToLower(number), "tel:") {

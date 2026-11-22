@@ -23,7 +23,7 @@ func TestPublishWritesEscapedStaticHTML(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	contact := &models.Contact{Name: `<Ada>`, Phone: `123 & "456"`}
+	contact := &models.Contact{Name: `<Ada>`, LastName: `Lovelace & Co.`, Phone: `123 & "456"`}
 	if err := publisher.Publish(contact); err != nil {
 		t.Fatal(err)
 	}
@@ -40,7 +40,7 @@ func TestPublishWritesEscapedStaticHTML(t *testing.T) {
 		t.Fatalf("published file permissions = %04o, want 0644", info.Mode().Perm())
 	}
 	page := string(content)
-	for _, expected := range []string{"&lt;Ada&gt;", "123 &amp; &#34;456&#34;"} {
+	for _, expected := range []string{"&lt;Ada&gt; Lovelace &amp; Co.", "123 &amp; &#34;456&#34;"} {
 		if !strings.Contains(page, expected) {
 			t.Errorf("page does not contain escaped value %q: %s", expected, page)
 		}
@@ -90,13 +90,13 @@ func TestWebTemplateShowsCallLinkOrUnavailableMessage(t *testing.T) {
 	}
 	publisher := &FilePublisher{template: string(template)}
 
-	page := publisher.render(&models.Contact{Name: "Léa", Phone: "+41 79 123 45 67"})
+	page := publisher.render(&models.Contact{Name: "Léa", LastName: "Muster", Phone: "+41 79 123 45 67"})
 	for _, expected := range []string{
 		`<section  aria-label="Diensthabende Person">`,
 		`<section hidden aria-label="Keine Dienstinformation">`,
 		`href="tel:+41791234567"`,
 		"+41 79 123 45 67",
-		"Léa",
+		"Léa Muster",
 	} {
 		if !strings.Contains(page, expected) {
 			t.Errorf("contact page missing %q", expected)
