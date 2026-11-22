@@ -1,0 +1,51 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 144" role="img" aria-labelledby="title description">
+  <title id="title">Hilfmal – Pikettdienst</title>
+  <desc id="description">Terrakottafarbene Hilfmal-Wortmarke mit H-Abzeichen, Securityfigur, Diskokugel und Spiegelung</desc>
+  <defs>
+    <linearGradient id="reflection" x1="0" y1="78" x2="0" y2="144" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#bd735f" stop-opacity=".32"/>
+      <stop offset=".45" stop-color="#bd735f" stop-opacity=".14"/>
+      <stop offset="1" stop-color="#bd735f" stop-opacity="0"/>
+    </linearGradient>
+    <filter id="subtitle-glow" x="-25%" y="-150%" width="150%" height="400%">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="5.5" result="blur"/>
+      <feFlood flood-color="#fff" flood-opacity="1" result="white"/>
+      <feComposite in="white" in2="blur" operator="in" result="glow"/>
+      <feMerge>
+        <feMergeNode in="glow"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+  <g transform="translate(0 140.8) scale(1 -.676)" opacity=".16">
+    <g transform="translate(4 14) scale(.5)">
+      <rect x="4" y="4" width="136" height="136" rx="40" fill="#bd735f"/>
+      <path d="M37 34v78m70-78v78M37 72h70" fill="none" stroke="#fff" stroke-linecap="round" stroke-width="16"/>
+      <g transform="translate(18 18) scale(.75)">
+        <circle cx="72" cy="26" r="6.5" fill="#fff"/>
+        <path d="M62 53V39q0-5 5-5h10q5 0 5 5v14Z" fill="#fff"/>
+        <path d="M65 36v10h11m3-10v10H68" fill="none" stroke="#bd735f" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5"/>
+        <path d="m69 49-3 19m9-19 3 19" fill="none" stroke="#fff" stroke-linecap="round" stroke-width="3"/>
+        <path d="M72 77v15" fill="none" stroke="#fff" stroke-linecap="round" stroke-width="3"/>
+        <circle cx="72" cy="109" r="17" fill="#f3e5d1" stroke="#fff" stroke-width="2"/>
+        <path d="M59 103h26m-27 8h28m-25 8h22M72 93v32m-7-31c5 9 5 23 0 31m14-31c-5 9-5 23 0 31" fill="none" stroke="#bd735f" stroke-linecap="round" stroke-width="1.5"/>
+      </g>
+    </g>
+  </g>
+  <g transform="translate(4 14) scale(.5)">
+    <rect x="4" y="4" width="136" height="136" rx="40" fill="#bd735f"/>
+    <path d="M37 34v78m70-78v78M37 72h70" fill="none" stroke="#fff" stroke-linecap="round" stroke-width="16"/>
+    <g transform="translate(18 18) scale(.75)">
+      <circle cx="72" cy="26" r="6.5" fill="#fff"/>
+      <path d="M62 53V39q0-5 5-5h10q5 0 5 5v14Z" fill="#fff"/>
+      <path d="M65 36v10h11m3-10v10H68" fill="none" stroke="#bd735f" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5"/>
+      <path d="m69 49-3 19m9-19 3 19" fill="none" stroke="#fff" stroke-linecap="round" stroke-width="3"/>
+      <path d="M72 77v15" fill="none" stroke="#fff" stroke-linecap="round" stroke-width="3"/>
+      <circle cx="72" cy="109" r="17" fill="#f3e5d1" stroke="#fff" stroke-width="2"/>
+      <path d="M59 103h26m-27 8h28m-25 8h22M72 93v32m-7-31c5 9 5 23 0 31m14-31c-5 9-5 23 0 31" fill="none" stroke="#bd735f" stroke-linecap="round" stroke-width="1.5"/>
+    </g>
+  </g>
+  <text x="74" y="78" fill="#bd735f" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="82" font-weight="800" letter-spacing="-4">ilfmal</text>
+  <text x="74" y="78" fill="url(#reflection)" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="82" font-weight="800" letter-spacing="-4" transform="translate(0 136.5) scale(1 -0.75)">ilfmal</text>
+  <text x="80" y="100" fill="#bd735f" filter="url(#subtitle-glow)" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="17" font-weight="700" letter-spacing="2.5" stroke="#fff" stroke-linejoin="round" stroke-width="1.2" paint-order="stroke fill">PIKETTDIENST</text>
+</svg>

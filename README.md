@@ -1,5 +1,7 @@
 # Hilfmal
 
+![Hilfmal – Pikettdienst](templates/hilfmal-logo.svg)
+
 **«Hilfmal», der Pikettdienst für Jugendunruhen in Gemeinschaftsräumen.**
 
 Ein freiwilliger Hilfsdienst für die Gemeinschaftsräume der WBGO. Mithelfen können alle Interessierten, Eltern sind besonders angesprochen.
