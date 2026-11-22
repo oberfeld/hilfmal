@@ -45,7 +45,7 @@ jobs:
           mkdir -p "$DEPLOY_DIR/templates" "$DEPLOY_DIR/scripts"
           CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o "$DEPLOY_DIR/hilfmal" ./cmd/hilfmal
           cp config.cyon.yaml "$DEPLOY_DIR/config.yaml"
-          cp templates/admin.txt templates/reminder.txt templates/web.html templates/hilfmal-logo.svg templates/hilfmal-icon.svg "$DEPLOY_DIR/templates/"
+          cp templates/admin.txt templates/reminder.txt templates/web.html "$DEPLOY_DIR/templates/"
           cp scripts/update-crontab.sh "$DEPLOY_DIR/scripts/"
           user_escaped=${CHISCHTE_UN//\'/\'\\\'\'}
           password_escaped=${CHISCHTE_PW//\'/\'\\\'\'}
@@ -87,13 +87,15 @@ jobs:
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         run: |
           DEPLOY_DIR="$RUNNER_TEMP/hilfmal-deploy"
-          ssh cyon 'mkdir -p /home/wohnenim/hilfmal /home/wohnenim/public_html/hilfmal/public'
+          ssh cyon 'mkdir -p /home/wohnenim/hilfmal /home/wohnenim/public_html/hilfmal/public/assets'
           rsync -az --delete "$DEPLOY_DIR/" cyon:/home/wohnenim/hilfmal/
-          ssh cyon 'cp /home/wohnenim/hilfmal/templates/hilfmal-logo.svg /home/wohnenim/hilfmal/templates/hilfmal-icon.svg /home/wohnenim/public_html/hilfmal/public/'
+          rsync -rz public/ cyon:/home/wohnenim/public_html/hilfmal/public/assets/
           ssh cyon "CRON_SCHEDULE='$CRON_SCHEDULE' sh -s" <<'REMOTE'
           set -eu
           chmod 700 /home/wohnenim/hilfmal/hilfmal
           chmod 600 /home/wohnenim/hilfmal/.env
+          find /home/wohnenim/public_html/hilfmal/public/assets -type d -exec chmod 755 {} +
+          find /home/wohnenim/public_html/hilfmal/public/assets -type f -exec chmod 644 {} +
 
           cron_job="$CRON_SCHEDULE cd /home/wohnenim/hilfmal && set -a && . /home/wohnenim/hilfmal/.env && set +a && /home/wohnenim/hilfmal/hilfmal /home/wohnenim/hilfmal/config.yaml # hilfmal deployment"
           sh /home/wohnenim/hilfmal/scripts/update-crontab.sh "$cron_job"

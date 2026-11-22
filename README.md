@@ -1,6 +1,6 @@
 # Hilfmal
 
-![Hilfmal – Pikettdienst](templates/hilfmal-logo.svg)
+![Hilfmal – Pikettdienst](public/hilfmal-logo.svg)
 
 **«Hilfmal», der Pikettdienst für Jugendunruhen in Gemeinschaftsräumen.**
 
@@ -44,7 +44,7 @@ Der Aufruf verwendet die Systemzeit und greift über HTTPS auf Nextcloud zu. Er 
 
 **Hinweis zur statischen Webseite:** Die HTML-Datei blendet Kontaktdaten nach einer festgelegten Zeit nicht automatisch aus. Wenn ein Lauf ausbleibt oder fehlschlägt, bleibt die zuletzt veröffentlichte Telefonnummer sichtbar, bis ein neuer erfolgreicher Lauf die Datei ersetzt.
 
-Texte und Gestaltung stehen in `templates/`; Pfade und E-Mail-Betreffzeilen sind konfigurierbar.
+Texte und Gestaltung stehen in `templates/`, öffentliche statische Dateien in `public/`; Pfade und E-Mail-Betreffzeilen sind konfigurierbar.
 
 ## Tests
 
@@ -67,6 +67,8 @@ Die GitHub Action führt `make verify` aus. Darin enthalten sind auch isolierte 
 ### Cyon-Deployment
 
 Pushes auf `main` deployen das statisch gelinkte Linux-Binary (ohne glibc-Abhängigkeit), die Templates und `config.cyon.yaml` nach `/home/wohnenim/hilfmal`. Anschliessend aktualisiert `hilfmal --publish-only config.yaml` die Webseite, ohne Erinnerungen, Administrationshinweise oder Fehler-E-Mails zu versenden. Der Modus verwendet dieselbe Konfiguration und dieselben Templates wie der vollständige Lauf. Fehler werden protokolliert und lassen das Deployment fehlschlagen. Die erzeugte Webseite liegt unter `/home/wohnenim/public_html/hilfmal/public/index.html`. Die Action setzt den Cyon-Cronjob anhand von `cron_schedule` in `config.cyon.yaml`; dieser führt den vollständigen Programmlauf täglich um 06:00 Uhr in der Zeitzone des Cyon-Servers aus.
+
+Alle Dateien unter `public/` werden in das öffentliche Unterverzeichnis `assets/` kopiert (Dateien mit Rechten `644`, Verzeichnisse mit `755`). Bereits vorhandene Dateien wie die erzeugte `index.html` bleiben erhalten.
 
 Unter **Settings → Secrets and variables → Actions** müssen eingerichtet sein:
 
